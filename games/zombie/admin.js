@@ -82,17 +82,17 @@
         h('div', { class: 'card-black zb-admin' },
           h('div', { class: 'label' }, `🧟 좀비 게임 · ${STATUS[g.status]}`),
           Kit.timerEl(t, 'zb-admin-timer')),
-        h('div', { class: 'row row-wrap' },
-          g.status === 'ready' || g.status === 'ended'
-            ? h('button', { class: 'btn btn-green btn-lg', on: { click: act('start') } }, g.status === 'ended' ? '▶ 다시 시작' : '▶ 시작') : null,
-          g.status === 'playing' ? h('button', { class: 'btn btn-ghost btn-lg', on: { click: act('pause') } }, '⏸ 일시정지') : null,
-          g.status === 'paused' ? h('button', { class: 'btn btn-primary btn-lg', on: { click: act('resume') } }, '▶ 재개') : null,
-          h('button', { class: 'btn btn-ghost btn-lg', on: { click: act('adjustTime', { seconds: 30 }) } }, '+30초'),
-          h('button', { class: 'btn btn-ghost btn-lg', on: { click: act('adjustTime', { seconds: 60 }) } }, '+1분'),
-          live ? h('button', { class: 'btn btn-ghost btn-lg', on: { click: act('adjustTime', { seconds: -30 }) } }, '−30초') : null,
+        h('div', { class: 'qk-admin-main' },
+          g.status === 'playing' ? h('button', { class: 'btn btn-ghost btn-xl', on: { click: act('pause') } }, '일시정지')
+            : g.status === 'paused' ? h('button', { class: 'btn btn-primary btn-xl', on: { click: act('resume') } }, '▶ 재개')
+              : h('button', { class: 'btn btn-primary btn-xl', on: { click: act('start') } }, g.status === 'ended' ? '▶ 다시 시작' : '▶ 시작')),
+        h('div', { class: 'qk-admin-tools' },
+          h('button', { class: 'btn btn-sm btn-ghost', on: { click: act('adjustTime', { seconds: 30 }) } }, '+30초'),
+          h('button', { class: 'btn btn-sm btn-ghost', on: { click: act('adjustTime', { seconds: 60 }) } }, '+1분'),
+          live ? h('button', { class: 'btn btn-sm btn-ghost', on: { click: act('adjustTime', { seconds: -30 }) } }, '−30초') : null,
           h('div', { class: 'spacer' }),
-          live ? h('button', { class: 'btn btn-danger', on: { click: act('end') } }, '종료') : null,
-          g.status !== 'ready' ? h('button', { class: 'btn btn-ghost', on: { click: act('reset') } }, '↺ 리셋') : null),
+          live ? h('button', { class: 'btn btn-sm btn-danger', on: { click: act('end') } }, '종료') : null,
+          g.status !== 'ready' ? h('button', { class: 'btn btn-sm btn-ghost', on: { click: act('reset') } }, '리셋') : null),
         h('div', { class: 'card stack' }, h('h3', { class: 'heading-sm' }, '⏱ 게임 시간'), durationForm(ctx, api)),
         h('p', { class: 'faint link-sm', style: { margin: 0 } }, '점수는 상단 스코어보드의 +/− 버튼으로 직접 반영하세요.')));
     },
