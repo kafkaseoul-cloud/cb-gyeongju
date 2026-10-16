@@ -1,0 +1,40 @@
+{
+  "rules": {
+    "public": {
+      ".read": "auth != null",
+      ".write": "auth != null && auth.token.email === 'kafka.seoul@gmail.com'"
+    },
+    "admin": {
+      ".read": "auth != null && auth.token.email === 'kafka.seoul@gmail.com'",
+      ".write": "auth != null && auth.token.email === 'kafka.seoul@gmail.com'"
+    },
+    "players": {
+      ".read": "auth != null",
+      "$uid": {
+        ".write": "auth != null && (auth.uid === $uid || auth.token.email === 'kafka.seoul@gmail.com')",
+        ".validate": "newData.child('nickname').isString() && newData.child('nickname').val().length >= 1 && newData.child('nickname').val().length <= 12",
+        "avatar": { ".validate": "newData.isString() && newData.val().length < 80000" },
+        "team": { ".validate": "auth.token.email === 'kafka.seoul@gmail.com' || newData.val() === data.val()" },
+        "joinedAt": { ".validate": "newData.isNumber()" },
+        "nickname": { ".validate": true },
+        "$other": { ".validate": false }
+      }
+    },
+    "status": {
+      ".read": "auth != null",
+      ".write": "auth != null && auth.token.email === 'kafka.seoul@gmail.com'",
+      "$uid": {
+        ".write": "auth != null && auth.uid === $uid",
+        ".validate": "newData.isBoolean()"
+      }
+    },
+    "chat": {
+      ".read": "auth != null",
+      ".write": "auth != null && auth.token.email === 'kafka.seoul@gmail.com'",
+      "$msg": {
+        ".write": "auth != null && !data.exists() && newData.child('uid').val() === auth.uid && root.child('public/phase').val() === 'lobby'",
+        ".validate": "newData.child('text').isString() && newData.child('text').val().length >= 1 && newData.child('text').val().length <= 200 && newData.child('at').isNumber()"
+      }
+    }
+  }
+}

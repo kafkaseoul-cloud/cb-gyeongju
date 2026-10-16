@@ -1,0 +1,162 @@
+/* ==========================================================================
+   관리자 화면 — Discord 앱 셸 스타일 (사이드바 + 메인)
+   ========================================================================== */
+
+.login { min-height: 100vh; display: grid; place-items: center; padding: var(--s-md); }
+.login-card { width: min(100%, 440px); }
+
+.shell { display: grid; grid-template-columns: 260px minmax(0, 1fr); min-height: 100vh; }
+
+/* ───── 사이드바 ───── */
+.sidebar {
+  position: sticky; top: 0; height: 100vh;
+  display: flex; flex-direction: column; gap: var(--s-md);
+  padding: var(--s-lg) var(--s-sm);
+  background: rgba(6, 8, 36, 0.7);
+  backdrop-filter: blur(14px);
+  border-right: 1px solid var(--hairline);
+}
+.side-brand { display: flex; align-items: center; gap: 10px; padding: 0 var(--s-xs); font-family: var(--font-display); font-weight: 900; text-transform: uppercase; font-size: 17px; }
+.side-brand span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.brand-mark { display: inline-grid; place-items: center; width: 32px; height: 32px; border-radius: 10px; background: var(--primary); font-size: 13px; flex: none; }
+.nav { display: grid; gap: 2px; overflow-y: auto; flex: 1; align-content: start; }
+.nav-group { margin: var(--s-md) var(--s-xs) 4px; font-size: 12px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-faint); }
+.nav-row {
+  display: flex; align-items: center; gap: 10px;
+  width: 100%; border: 0; cursor: pointer; text-align: left;
+  padding: var(--s-sm) var(--s-md);
+  border-radius: var(--r-md);
+  background: transparent; color: var(--ink-dim);
+  font-weight: 700; font-size: 15px;
+  position: relative;
+}
+.nav-row:hover { background: rgba(255,255,255,0.05); color: var(--ink); }
+.nav-row.on { background: var(--surface-indigo); color: var(--ink); }
+.nav-row.on::before { content: ""; position: absolute; left: -12px; top: 8px; bottom: 8px; width: 4px; border-radius: 0 4px 4px 0; background: var(--primary); }
+.nav-icon { width: 24px; text-align: center; }
+.side-foot { display: flex; align-items: center; gap: 8px; padding: 0 var(--s-xs); }
+
+/* ───── 메인 ───── */
+.main { min-width: 0; display: flex; flex-direction: column; }
+.admin-top {
+  position: sticky; top: 0; z-index: 30;
+  display: flex; align-items: center; gap: var(--s-sm);
+  padding: var(--s-md) var(--s-xl);
+  background: rgba(10, 13, 58, 0.8);
+  backdrop-filter: blur(12px);
+}
+.admin-scorebar { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto; gap: var(--s-sm); align-items: center; padding: 0 var(--s-xl) var(--s-md); }
+.admin-team { display: flex; align-items: center; gap: 8px; padding: 10px 12px 10px 18px; border-radius: var(--r-lg); min-width: 0; }
+.admin-team.a { background: var(--team-a); }
+.admin-team.b { background: var(--team-b); }
+.team-name-input { width: 100%; min-width: 0; background: transparent; border: 0; border-bottom: 2px solid transparent; font-weight: 800; font-size: 18px; color: var(--ink); padding: 0; outline: none; }
+.team-name-input:focus { border-bottom-color: rgba(255,255,255,0.6); }
+.admin-pts { border: 0; background: transparent; cursor: pointer; color: var(--ink); font-family: var(--font-display); font-weight: 900; font-size: 40px; line-height: 1; min-width: 64px; font-variant-numeric: tabular-nums; }
+.btn-dark { background: rgba(0,0,0,0.25); color: var(--ink); font-size: 20px; font-weight: 900; }
+.btn-dark:hover { background: rgba(0,0,0,0.4); }
+
+.page { padding: 0 var(--s-xl) var(--s-section); display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--s-lg); align-content: start; max-width: 1280px; width: 100%; }
+.page-section:empty { display: none; }
+
+/* ───── 진행 단계 ───── */
+.steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--s-sm); }
+.step {
+  display: flex; align-items: center; gap: var(--s-sm);
+  border: 0; cursor: pointer; text-align: left; color: var(--ink);
+  padding: var(--s-md);
+  border-radius: var(--r-lg);
+  background: var(--surface-indigo);
+}
+.step:disabled { cursor: default; }
+.step:not(:disabled):hover { background: var(--surface-indigo-2); }
+.step strong { display: block; font-size: 16px; }
+.step-num { width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center; font-weight: 900; background: rgba(255,255,255,0.08); flex: none; }
+.step.on { background: var(--primary); box-shadow: 0 0 0 3px rgba(255,255,255,0.15) inset; }
+.step.on .step-num { background: var(--ink); color: var(--primary); }
+.step.on .muted { color: rgba(255,255,255,0.85); }
+
+.lobby-cta { display: flex; align-items: center; gap: var(--s-xl); }
+.qr-mini { width: 132px; height: 132px; padding: 8px; background: #fff; border-radius: var(--r-lg); flex: none; }
+.qr-mini img { width: 100%; height: 100%; }
+
+.admin-games { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(240px, 100%), 1fr)); gap: var(--s-sm); }
+.admin-game {
+  display: flex; align-items: center; gap: var(--s-sm);
+  border: 0; cursor: pointer; text-align: left; color: var(--ink);
+  padding: var(--s-md);
+  border-radius: var(--r-lg);
+  background: var(--surface-indigo);
+  outline: 3px solid transparent;
+  transition: transform .1s ease;
+}
+.admin-game:hover { transform: translateY(-2px); }
+.admin-game strong { display: block; }
+.admin-game.on.c-magenta { background: linear-gradient(135deg, var(--magenta), #b23ae0); }
+.admin-game.on.c-primary { background: var(--primary); }
+.admin-game.on.c-onyx { background: var(--surface-onyx); outline-color: rgba(255,255,255,0.3); }
+.admin-game-icon { font-size: 30px; width: 52px; height: 52px; display: grid; place-items: center; border-radius: 16px; background: rgba(0,0,0,0.25); flex: none; }
+.game-panel { background: rgba(30, 35, 83, 0.85); }
+
+/* ───── 참가자 · 팀 ───── */
+.team-cols { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--s-md); align-items: start; }
+.team-col { display: grid; gap: 6px; padding: var(--s-md); border-radius: var(--r-lg); background: var(--surface-indigo); }
+.team-col-a { box-shadow: inset 0 4px 0 var(--team-a); }
+.team-col-b { box-shadow: inset 0 4px 0 var(--team-b); }
+.team-col-head { padding: 4px 4px 8px; }
+.prow { display: flex; align-items: center; gap: 10px; padding: 8px; border-radius: var(--r-md); background: rgba(0,0,0,0.2); }
+.prow.offline { opacity: 0.5; }
+.prow-name { font-weight: 700; }
+.seg-sm .seg-btn { padding: 4px 10px; min-height: 30px; }
+.btn-icon.btn-danger { min-height: 30px; width: 30px; font-size: 13px; }
+
+/* ───── 채팅 ───── */
+.admin-chat-log { height: 56vh; overflow-y: auto; display: grid; gap: 10px; align-content: start; padding: var(--s-sm); background: rgba(0,0,0,0.25); border-radius: var(--r-md); }
+.achat { display: flex; gap: 10px; align-items: flex-start; }
+.achat-text { white-space: pre-wrap; word-break: break-word; }
+.chat-sys { justify-self: center; font-size: 13px; color: var(--ink-faint); }
+
+/* ───── QR · 설정 ───── */
+.settings-grid { display: grid; grid-template-columns: minmax(280px, 380px) minmax(0, 1fr); gap: var(--s-lg); align-items: start; }
+.qr-card { justify-items: center; }
+.qr-box { width: 100%; max-width: 320px; aspect-ratio: 1; background: #fff; border-radius: var(--r-lg); padding: 12px; }
+.qr-box img { width: 100%; height: 100%; }
+.url-opt { display: flex; align-items: center; gap: 10px; border: 2px solid transparent; cursor: pointer; text-align: left; padding: 10px 14px; border-radius: var(--r-sm); background: rgba(0,0,0,0.25); color: var(--ink); font-weight: 600; word-break: break-all; }
+.url-opt.on { border-color: var(--primary); background: rgba(88,101,242,0.18); }
+
+.qr-full {
+  position: fixed; inset: 0; z-index: 1000;
+  display: grid; place-items: center;
+  background: var(--canvas);
+  cursor: pointer;
+  padding: var(--s-xl);
+}
+.qr-full::before { content: ""; position: absolute; inset: 0; background: radial-gradient(50% 50% at 50% 30%, rgba(88,101,242,0.45), transparent 70%), radial-gradient(40% 40% at 80% 90%, rgba(236,72,189,0.35), transparent 70%); }
+.qr-full-inner { position: relative; display: grid; justify-items: center; gap: var(--s-lg); text-align: center; }
+.qr-full-code { width: min(62vh, 80vw); aspect-ratio: 1; background: #fff; border-radius: var(--r-xl); padding: 24px; box-shadow: var(--shadow-float); }
+.qr-full-code img { width: 100%; height: 100%; }
+
+/* ───── 반응형 ───── */
+@media (max-width: 1100px) {
+  .team-cols { grid-template-columns: 1fr 1fr; }
+}
+@media (max-width: 860px) {
+  .shell { grid-template-columns: minmax(0, 1fr); }
+  .sidebar { position: sticky; top: 0; z-index: 40; height: auto; flex-direction: row; align-items: center; padding: var(--s-xs) var(--s-sm); gap: var(--s-xs); border-right: 0; border-bottom: 1px solid var(--hairline); }
+  .side-brand span:last-child, .side-foot .link-sm, .nav-group { display: none; }
+  .nav { display: flex; overflow-x: auto; flex: 1; gap: 4px; scrollbar-width: none; }
+  .nav-row { width: auto; flex: none; padding: 8px 12px; font-size: 14px; }
+  .nav-row.on::before { display: none; }
+  .admin-top { position: static; padding: var(--s-md); flex-wrap: wrap; }
+  #page-title { white-space: nowrap; }
+  .admin-scorebar { grid-template-columns: minmax(0, 1fr); padding: 0 var(--s-md) var(--s-md); }
+  .admin-scorebar > .btn { grid-column: 1 / -1; }
+  .page { padding: 0 var(--s-md) var(--s-section); }
+  .steps { grid-template-columns: 1fr; }
+  .settings-grid { grid-template-columns: minmax(0, 1fr); }
+  .team-cols { grid-template-columns: minmax(0, 1fr); }
+  .qk-admin-judge .btn { min-height: 76px; font-size: 22px; }
+  .qk-admin-answer { padding: var(--s-lg); gap: var(--s-md); }
+  .qk-admin-img { width: 88px; height: 88px; }
+  .lobby-cta { flex-direction: column; align-items: flex-start; }
+  .admin-pts { font-size: 30px; min-width: 44px; }
+}

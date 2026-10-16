@@ -1,0 +1,73 @@
+/* ==========================================================================
+   QuizKit — 퀴즈형 게임 공통 스타일 (참가자 + 관리자)
+   ========================================================================== */
+
+/* ───── 참가자 ───── */
+.qk-stage { display: grid; gap: var(--s-md); justify-items: stretch; }
+.qk-topline { display: flex; align-items: center; justify-content: space-between; gap: var(--s-sm); flex-wrap: wrap; }
+.qk-team { display: inline-flex; align-items: center; gap: 8px; padding: 8px 16px 8px 8px; border-radius: var(--r-pill); font-size: 16px; justify-self: start; }
+.qk-team.team-a { background: var(--team-a); }
+.qk-team.team-b { background: var(--team-b); }
+.qk-team-label { font-size: 12px; font-weight: 800; background: rgba(0,0,0,0.25); padding: 3px 10px; border-radius: var(--r-pill); }
+.qk-counts { display: flex; align-items: center; gap: 6px; font-weight: 800; }
+.qk-timer { font-size: clamp(88px, 26vw, 220px); text-align: center; margin: 4px 0; text-shadow: 0 8px 40px rgba(88, 101, 242, 0.5); }
+.qk-center { position: relative; }
+.qk-act { display: grid; justify-items: center; text-align: center; gap: 12px; padding: var(--s-section) var(--s-xl); }
+.qk-act-emoji { font-size: 72px; line-height: 1; animation: wiggle 1.6s ease-in-out infinite; }
+@keyframes wiggle { 0%, 100% { transform: rotate(-8deg); } 50% { transform: rotate(8deg) translateY(-6px); } }
+.qk-photo { border-radius: var(--r-xl); overflow: hidden; background: var(--surface-black); display: grid; place-items: center; box-shadow: var(--shadow-float); }
+.qk-photo img { width: 100%; max-height: 62vh; object-fit: contain; }
+.qk-photo-empty { min-height: 280px; gap: 8px; padding: var(--s-xl); text-align: center; }
+.qk-paused { position: absolute; inset: 0; border-radius: var(--r-xl); display: grid; place-content: center; text-align: center; gap: 8px; background: rgba(10,13,58,0.82); backdrop-filter: blur(8px); }
+.qk-ready-card { display: grid; justify-items: center; text-align: center; gap: var(--s-md); padding: var(--s-section) var(--s-xl); }
+.qk-ready-card .qk-team { justify-self: center; background: rgba(0,0,0,0.25); }
+.qk-ready-time { font-size: 18px; }
+.qk-over { display: grid; justify-items: center; text-align: center; gap: var(--s-md); }
+.qk-over .qk-team { justify-self: center; }
+.qk-result-nums { display: flex; gap: var(--s-section); }
+.qk-big { font-family: var(--font-display); font-weight: 900; font-size: 64px; line-height: 1; }
+
+.qk-history { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.qk-hist { display: flex; align-items: center; gap: var(--s-sm); padding: 8px 12px; border-radius: var(--r-md); background: rgba(0,0,0,0.22); }
+.qk-hist.pass { opacity: 0.6; }
+.qk-hist-no { width: 24px; text-align: center; font-weight: 800; color: var(--ink-faint); font-variant-numeric: tabular-nums; }
+.qk-hist-answer { font-weight: 700; }
+.qk-hist .thumb { width: 40px; height: 40px; }
+
+/* ───── 관리자 ───── */
+.qk-admin { display: grid; gap: var(--s-md); }
+.qk-admin-top { display: grid; grid-template-columns: 1fr auto 1fr; gap: var(--s-md); align-items: end; }
+.qk-admin-top > :last-child { justify-items: end; }
+@media (max-width: 720px) { .qk-admin-top { grid-template-columns: 1fr; } .qk-admin-top > :last-child { justify-items: start; } }
+.qk-admin-timer { font-size: 64px; }
+.qk-admin-answer {
+  display: flex; align-items: center; gap: var(--s-xl);
+  min-height: 160px;
+  padding: var(--s-xl) var(--s-xxl);
+  border-radius: var(--r-xl);
+  background: linear-gradient(135deg, var(--magenta) 0%, #b23ae0 55%, var(--primary) 100%);
+}
+.qk-admin-answer-empty { background: var(--surface-indigo); justify-content: center; text-align: center; }
+.qk-admin-word { font-family: var(--font-display); font-weight: 900; font-size: clamp(36px, 6vw, 72px); line-height: 1.05; word-break: keep-all; }
+.qk-admin-img { width: 140px; height: 140px; object-fit: cover; border-radius: var(--r-lg); background: rgba(0,0,0,.3); flex: none; }
+.qk-admin-judge { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s-md); }
+.qk-admin-judge .btn { min-height: 96px; font-size: 28px; }
+.qk-admin-history summary { cursor: pointer; }
+
+.seg { display: inline-flex; background: rgba(0,0,0,0.3); padding: 4px; border-radius: var(--r-sm); gap: 4px; }
+.seg-btn { border: 0; background: transparent; padding: 8px 16px; border-radius: 9px; font-weight: 800; cursor: pointer; color: var(--ink-dim); min-height: 40px; }
+.seg-btn.on { color: var(--ink); }
+.seg-btn.on.team-a { background: var(--team-a); }
+.seg-btn.on.team-b { background: var(--team-b); }
+.seg-btn.on.plain { background: var(--primary); }
+
+.qk-add { display: flex; gap: var(--s-md); align-items: flex-start; padding: var(--s-md); border-radius: var(--r-lg); background: rgba(0,0,0,0.22); }
+.qk-upload { cursor: pointer; width: 72px; height: 72px; border: 2px dashed rgba(255,255,255,0.18); overflow: hidden; }
+.qk-upload .thumb { width: 100%; height: 100%; }
+.qk-qlist { display: grid; gap: 6px; }
+.qk-qrow { display: flex; align-items: center; gap: var(--s-sm); padding: 8px 12px; border-radius: var(--r-md); background: var(--surface-indigo); }
+.qk-qrow .thumb { width: 44px; height: 44px; }
+.qk-thumb-btn { border: 0; padding: 0; background: none; cursor: pointer; border-radius: var(--r-sm); }
+.qk-qno { width: 28px; text-align: center; color: var(--ink-faint); font-weight: 800; font-variant-numeric: tabular-nums; }
+.qk-qanswer { font-weight: 700; }
+@media (max-width: 600px) { .qk-qrow { flex-wrap: wrap; } .qk-qrow .qk-qanswer { flex-basis: 50%; } }

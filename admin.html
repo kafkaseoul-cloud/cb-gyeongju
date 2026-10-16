@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0a0d3a">
+  <title>관리자 · GAME NIGHT</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+  <link rel="stylesheet" href="css/base.css">
+  <link rel="stylesheet" href="css/quiz-kit.css">
+  <link rel="stylesheet" href="css/admin.css">
+</head>
+<body class="admin">
+  <!-- 로그인 -->
+  <section id="login" class="login" hidden>
+    <form id="login-form" class="card card-xl login-card stack">
+      <div class="eyebrow">ADMIN</div>
+      <h1 class="display-md">관리자 로그인</h1>
+      <input id="login-email" class="input input-lg" type="email" placeholder="관리자 이메일" autocomplete="username" required>
+      <input id="login-pw" class="input input-lg" type="password" placeholder="비밀번호" autocomplete="current-password" required>
+      <p class="faint link-sm" style="margin:0">Firebase Authentication에 등록한 관리자 계정으로 로그인하세요.</p>
+      <button class="btn btn-primary btn-lg btn-block" type="submit">로그인</button>
+    </form>
+  </section>
+
+  <!-- 앱 셸 -->
+  <div id="app" class="shell" hidden>
+    <aside class="sidebar">
+      <div class="side-brand"><span class="brand-mark">▲</span><span id="side-title">GAME NIGHT</span></div>
+      <nav id="nav" class="nav"></nav>
+      <div class="side-foot"><span id="conn" class="conn-dot"></span><span id="online-count" class="link-sm muted">연결 중…</span></div>
+    </aside>
+    <main class="main">
+      <header class="admin-top">
+        <h1 id="page-title" class="heading-sm"></h1>
+        <span id="phase-pill" class="badge"></span>
+        <div class="spacer"></div>
+        <a id="player-link" class="btn btn-sm btn-ghost" href="./" target="_blank" rel="noopener">참가자 화면 ↗</a>
+      </header>
+      <div id="scorebar" class="admin-scorebar"></div>
+      <div id="page" class="page"></div>
+    </main>
+  </div>
+
+  <script src="config.js"></script>
+  <script src="js/kit.js"></script>
+  <script src="js/qr.js"></script>
+  <script src="js/quiz-kit.js"></script>
+  <script src="js/quiz-engine.js"></script>
+  <script type="module" src="js/admin.js"></script>
+</body>
+</html>

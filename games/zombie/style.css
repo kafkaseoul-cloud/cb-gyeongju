@@ -1,0 +1,19 @@
+/* 좀비 게임 */
+.zb {
+  display: grid; justify-items: center; text-align: center; gap: var(--s-sm);
+  padding: var(--s-section) var(--s-md);
+  border-radius: var(--r-xl);
+  background: radial-gradient(120% 90% at 50% 0%, rgba(53, 237, 126, 0.10), transparent 60%), var(--surface-black);
+  min-height: 60vh;
+  align-content: center;
+}
+.zb-emoji { font-size: 84px; line-height: 1; filter: drop-shadow(0 10px 30px rgba(53, 237, 126, 0.35)); }
+.zb-playing .zb-emoji { animation: zb-walk 1.2s ease-in-out infinite; }
+@keyframes zb-walk { 0%, 100% { transform: translateX(-10px) rotate(-6deg); } 50% { transform: translateX(10px) rotate(6deg); } }
+.zb-timer { font-size: clamp(96px, 30vw, 260px); }
+.zb-sub { margin: 0; }
+.zb-paused .zb-timer { opacity: 0.55; }
+.zb-ended .zb-title { color: var(--magenta); }
+
+.zb-admin { display: grid; justify-items: center; gap: 8px; padding: var(--s-xxl); }
+.zb-admin-timer { font-size: 96px; }

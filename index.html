@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0a0d3a">
+  <title>GAME NIGHT</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+  <link rel="stylesheet" href="css/base.css">
+  <link rel="stylesheet" href="css/player.css">
+  <link rel="stylesheet" href="css/quiz-kit.css">
+</head>
+<body class="player">
+  <div class="sticky-head">
+    <header class="topbar">
+      <div class="brand"><span class="brand-mark">▲</span><span id="brand-title">GAME NIGHT</span></div>
+      <div class="spacer"></div>
+      <button id="me-chip" class="me-chip" hidden></button>
+      <span id="conn" class="conn-dot" title="연결 상태"></span>
+    </header>
+    <div id="scorebar-host" class="scorebar-host" hidden></div>
+  </div>
+  <main id="view" class="view"></main>
+
+  <script src="config.js"></script>
+  <script src="js/kit.js"></script>
+  <script src="js/quiz-kit.js"></script>
+  <script type="module" src="js/player.js"></script>
+</body>
+</html>
