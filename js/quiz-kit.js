@@ -150,22 +150,26 @@
 
         current,
 
-        h('div', { class: 'qk-admin-judge' },
-          h('button', { class: 'btn btn-primary btn-xl', disabled: !live, on: { click: act('correct') } }, '⭕ 정답'),
-          h('button', { class: 'btn btn-ghost btn-xl', disabled: !live, on: { click: act('pass') } }, '➡️ 패스')),
+        // 메인 액션: 상태마다 지금 눌러야 할 버튼 하나(또는 정답/패스 둘)만 크게
+        round.status === 'playing'
+          ? h('div', { class: 'qk-admin-judge' },
+            h('button', { class: 'btn btn-primary btn-xl', on: { click: act('correct') } }, '정답'),
+            h('button', { class: 'btn btn-ghost btn-xl', on: { click: act('pass') } }, '패스'))
+          : h('div', { class: 'qk-admin-main' },
+            round.status === 'paused'
+              ? h('button', { class: 'btn btn-primary btn-xl', on: { click: act('resume') } }, '▶ 재개')
+              : h('button', { class: 'btn btn-primary btn-xl', on: { click: round.status === 'ended' ? async () => { await api.act('newRound'); await api.act('start'); } : act('start') } },
+                round.status === 'ended' ? '▶ 새 라운드 시작' : '▶ 라운드 시작')),
 
-        h('div', { class: 'row row-wrap' },
-          round.status === 'ready' || round.status === 'ended'
-            ? h('button', { class: 'btn btn-green', on: { click: round.status === 'ended' ? async () => { await api.act('newRound'); await api.act('start'); } : act('start') } }, round.status === 'ended' ? '▶ 새 라운드 시작' : '▶ 시작')
-            : null,
-          round.status === 'playing' ? h('button', { class: 'btn btn-ghost', on: { click: act('pause') } }, '⏸ 일시정지') : null,
-          round.status === 'paused' ? h('button', { class: 'btn btn-primary', on: { click: act('resume') } }, '▶ 재개') : null,
-          live ? h('button', { class: 'btn btn-ghost', on: { click: act('adjustTime', { seconds: 10 }) } }, '+10초') : null,
-          live ? h('button', { class: 'btn btn-ghost', on: { click: act('adjustTime', { seconds: -10 }) } }, '−10초') : null,
-          round.history.length ? h('button', { class: 'btn btn-ghost', title: '마지막 정답/패스 기록을 취소합니다 (정답이었다면 1점 차감)', on: { click: act('undo') } }, '↶ 마지막 판정 취소') : null,
+        // 보조 조작: 작게 한 줄
+        h('div', { class: 'qk-admin-tools' },
+          round.status === 'playing' ? h('button', { class: 'btn btn-sm btn-ghost', on: { click: act('pause') } }, '일시정지') : null,
+          live ? h('button', { class: 'btn btn-sm btn-ghost', on: { click: act('adjustTime', { seconds: 10 }) } }, '+10초') : null,
+          live ? h('button', { class: 'btn btn-sm btn-ghost', on: { click: act('adjustTime', { seconds: -10 }) } }, '−10초') : null,
+          round.history.length ? h('button', { class: 'btn btn-sm btn-ghost', title: '마지막 정답/패스 기록을 취소합니다 (정답이었다면 1점 차감)', on: { click: act('undo') } }, '↶ 마지막 판정 취소') : null,
           h('div', { class: 'spacer' }),
-          live ? h('button', { class: 'btn btn-danger', on: { click: act('end') } }, '라운드 종료') : null,
-          round.status !== 'ready' && !live ? h('button', { class: 'btn btn-ghost', on: { click: act('newRound') } }, '↺ 대기 상태로') : null),
+          live ? h('button', { class: 'btn btn-sm btn-danger', on: { click: act('end') } }, '라운드 종료') : null,
+          round.status === 'ended' ? h('button', { class: 'btn btn-sm btn-ghost', on: { click: act('newRound') } }, '대기 상태로') : null),
 
         h('details', { class: 'card qk-admin-history', open: round.status === 'ended' },
           h('summary', { class: 'heading-sm' }, `이번 라운드 기록 (${round.history.length})`),

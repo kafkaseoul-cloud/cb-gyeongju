@@ -318,7 +318,7 @@ import { boot, GAMES, buildState, chatList, defaultJoinUrl, DEFAULT_PUBLIC } fro
     if (!S.state) return;
     const page = $('#page');
     const st = S.state;
-    if (page._page !== S.page || force) { page._page = S.page; page._key = null; page.replaceChildren(); page._sections = {}; }
+    if (page._page !== S.page || force) { page._page = S.page; page._key = null; page.replaceChildren(); page._sections = {}; page.classList.remove('is-game'); }
     const titleOf = PAGES().find((p) => p.id === S.page);
     if (!titleOf) { go('control'); return; }
     $('#page-title').textContent = `${titleOf.icon} ${titleOf.label}`;
@@ -333,13 +333,14 @@ import { boot, GAMES, buildState, chatList, defaultJoinUrl, DEFAULT_PUBLIC } fro
   /** 페이지 안의 섹션 (데이터가 바뀐 섹션만 다시 그림) */
   function section(page, id, data, fn) {
     let el = page._sections[id];
-    if (!el) { el = page._sections[id] = h('section', { class: 'page-section' }); page.appendChild(el); }
+    if (!el) { el = page._sections[id] = h('section', { class: `page-section sec-${id}` }); page.appendChild(el); }
     keyed(el, data, fn);
     return el;
   }
 
   // ───────── 진행 페이지 ─────────
   function pageControl(page, st) {
+    page.classList.toggle('is-game', st.phase === 'game'); // 게임 중: 진행 패널을 위로, 게임 바꾸기는 아래에 작게
     section(page, 'phase', [st.phase, st.currentGameId, st.players.filter((p) => p.online).length, st.joinUrl], (el) => {
       const step = (key, num, title, desc, onClick) => h('button', {
         class: `step ${st.phase === key ? 'on' : ''}`, disabled: !onClick, on: onClick ? { click: onClick } : null,
