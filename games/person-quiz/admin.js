@@ -74,6 +74,15 @@
         }
         case 'deleteQuestion':
           return { [`${P.content}/questions/${payload.questionId}`]: null };
+        case 'bulkImages': {
+          const map = {};
+          (payload.sets || []).forEach((x) => { map[`${P.content}/questions/${x.questionId}/image`] = x.image; });
+          (payload.creates || []).forEach((x, i) => {
+            const answer = String(x.answer || '').trim().slice(0, 60);
+            if (answer) map[`${P.content}/questions/${newKey()}${i}`] = { answer, image: x.image || null, order: Date.now() + i };
+          });
+          return map;
+        }
         default: {
           const res = E.apply(type === 'setDurationRound' ? 'setDuration' : type, payload, roundOf(ctx), {
             pool: questionsOf(ctx), now: ctx.now, revealImage: true,
@@ -103,6 +112,15 @@
         h('div', { class: 'card stack' },
           h('h3', { class: 'heading-sm' }, '⏱ 게임 시간'),
           QuizKit.durationForm(duration(ctx), api)),
+        h('div', { class: 'card stack' },
+          h('h3', { class: 'heading-sm' }, '🖼️ 사진 일괄 등록'),
+          h('p', { class: 'muted', style: { margin: 0 } }, '사진 파일 이름을 정답(이름)으로 해서 여러 장을 한 번에 올리세요. 예) 홍길동.jpg → 정답 "홍길동"'),
+          QuizKit.bulkImageZone(api, {
+            questions: questionsOf(ctx),
+            createIn: {},
+            createLabel: '등록되지 않은 이름은 새 문제로 추가 (파일 이름 = 정답)',
+            createDefault: true,
+          })),
         h('div', { class: 'card stack' },
           h('h3', { class: 'heading-sm' }, '🕵️ 인물 문제'),
           h('p', { class: 'muted', style: { margin: 0 } }, '인물 사진을 올리고 정답(이름)을 입력하세요. 사진은 참가자 화면에 표시됩니다.'),
