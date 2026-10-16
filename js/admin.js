@@ -449,7 +449,7 @@ import { boot, GAMES, buildState, chatList, defaultJoinUrl, DEFAULT_PUBLIC } fro
     const input = h('input', { class: 'input', placeholder: '진행자로 메시지 보내기', maxlength: 200 });
     chatLog = h('div', { class: 'admin-chat-log' }, S.chat.length ? S.chat.map(chatRow) : h('div', { class: 'chat-sys chat-empty' }, '아직 메시지가 없어요'));
     mount(page, h('div', { class: 'card stack' },
-      h('div', { class: 'row' }, h('span', { class: 'muted grow' }, '대기실 단계에서만 참가자 채팅이 열려요.'),
+      h('div', { class: 'row' }, h('span', { class: 'muted grow' }, '게임이 진행 중일 때(타이머가 도는 동안)만 참가자 채팅이 닫혀요.'),
         h('button', { class: 'btn btn-sm btn-danger', on: { click: async () => { if (await Kit.confirm('채팅 기록을 모두 지울까요?', { danger: true, ok: '지우기' })) action('clearChat'); } } }, '채팅 비우기')),
       chatLog,
       h('form', { class: 'row', on: { submit: async (e) => {

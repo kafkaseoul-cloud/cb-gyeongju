@@ -181,9 +181,6 @@ import { boot, GAMES, buildState, chatList } from './common.js';
   function renderLobby(st) {
     if (S.view !== 'lobby') {
       S.view = 'lobby';
-      const input = h('input', { class: 'input', maxlength: 200, placeholder: '메시지 보내기', autocomplete: 'off', enterkeyhint: 'send' });
-      const send = h('button', { type: 'submit', class: 'btn btn-primary' }, '전송');
-      chatLog = h('div', { class: 'chat-log', role: 'log', 'aria-live': 'polite' });
       mount($('#view'),
         h('section', { class: 'lobby' },
           h('div', { class: 'lobby-hero' },
@@ -194,19 +191,7 @@ import { boot, GAMES, buildState, chatList } from './common.js';
             h('div', { class: 'card players-card' },
               h('div', { class: 'row' }, h('h2', { class: 'heading-sm' }, '대기자 명단'), h('span', { id: 'player-count', class: 'badge' }, '0')),
               h('div', { id: 'player-grid', class: 'player-grid' })),
-            h('div', { class: 'card chat-card' },
-              h('h2', { class: 'heading-sm' }, '채팅'),
-              chatLog,
-              h('form', { class: 'chat-form row', on: { submit: async (e) => {
-                e.preventDefault();
-                const text = input.value.trim();
-                if (!text) return;
-                input.value = '';
-                const m = me();
-                try { await B.push('chat', { uid: S.pid, kind: 'user', nickname: m.nickname, team: m.team || null, text: text.slice(0, 200), at: B.TIMESTAMP }); }
-                catch (err) { Kit.toast('메시지를 보내지 못했어요.', 'error'); input.value = text; }
-                input.focus();
-              } } }, input, send)))));
+            chatCard('채팅'))));
       paintChat(true);
     }
     const online = st.players.filter((p) => p.online);
@@ -217,6 +202,41 @@ import { boot, GAMES, buildState, chatList } from './common.js';
         h('div', { class: 'player-name ellipsis' }, p.nickname),
         p.team ? h('span', { class: `badge badge-${p.team.toLowerCase()}` }, st.teams[p.team].name) : null))
       : h('div', { class: 'empty' }, '아직 아무도 없어요')));
+  }
+
+  /** 채팅 카드 (대기실 · 게임 선택 · 게임 사이 쉬는 시간에 공통 사용) */
+  function chatCard(title, hint) {
+    const input = h('input', { class: 'input', maxlength: 200, placeholder: '메시지 보내기', autocomplete: 'off', enterkeyhint: 'send' });
+    const send = h('button', { type: 'submit', class: 'btn btn-primary' }, '전송');
+    chatLog = h('div', { class: 'chat-log', role: 'log', 'aria-live': 'polite' });
+    return h('div', { class: 'card chat-card' },
+      h('div', { class: 'row' }, h('h2', { class: 'heading-sm grow' }, title), hint ? h('span', { class: 'faint link-sm' }, hint) : null),
+      chatLog,
+      h('form', { class: 'chat-form row', on: { submit: async (e) => {
+        e.preventDefault();
+        const text = input.value.trim();
+        if (!text) return;
+        input.value = '';
+        const m = me();
+        try { await B.push('chat', { uid: S.pid, kind: 'user', nickname: m.nickname, team: m.team || null, text: text.slice(0, 200), at: B.TIMESTAMP }); }
+        catch (err) { Kit.toast('지금은 채팅을 보낼 수 없어요.', 'error'); input.value = text; }
+        input.focus();
+      } } }, input, send));
+  }
+
+  /** 게임이 실제로 진행 중(타이머가 돌고 있음)인지 — 이때만 채팅을 닫는다 */
+  function gamePlaying(st) {
+    if (st.phase !== 'game' || !st.game) return false;
+    const g = st.game;
+    return (g.round && g.round.status === 'playing') || g.status === 'playing';
+  }
+
+  /** slot 안에 채팅 카드를 (없으면) 붙이고, 진행 중이면 숨긴다 */
+  function syncChatSlot(slot, show) {
+    if (!slot) return;
+    slot.hidden = !show;
+    if (show && !slot.firstChild) { mount(slot, chatCard('채팅', '게임이 진행 중일 땐 잠시 닫혀요')); paintChat(true); }
+    if (show && slot.firstChild) { const log = slot.querySelector('.chat-log'); if (log !== chatLog) { chatLog = log; paintChat(true); } }
   }
 
   function chatItem(m) {
@@ -256,7 +276,7 @@ import { boot, GAMES, buildState, chatList } from './common.js';
   function renderSelect(st) {
     if (S.view !== 'select') $('#view')._key = null;
     S.view = 'select';
-    keyed($('#view'), ['select', st.games], (el) => mount(el,
+    keyed($('#view'), ['select', st.games], (el) => { mount(el,
       h('section', { class: 'select' },
         h('div', { class: 'card-gradient select-hero' },
           h('div', { class: 'eyebrow', style: { color: 'rgba(255,255,255,.85)' } }, 'GAME SELECT'),
@@ -265,7 +285,9 @@ import { boot, GAMES, buildState, chatList } from './common.js';
         h('div', { class: 'game-list' }, st.games.map((g, i) =>
           h('div', { class: `game-card c-${g.color || 'primary'}`, style: { animationDelay: `${i * 80}ms` } },
             h('div', { class: 'game-icon' }, g.icon || '🎮'),
-            h('div', { class: 'grow' }, h('div', { class: 'heading-sm' }, g.name), h('div', { class: 'muted' }, g.description || ''))))))));
+            h('div', { class: 'grow' }, h('div', { class: 'heading-sm' }, g.name), h('div', { class: 'muted' }, g.description || ''))))),
+        h('div', { id: 'chat-slot', class: 'chat-slot' })));
+      syncChatSlot($('#chat-slot'), true); });
   }
 
   // ───────── 게임 진행 ─────────
@@ -288,8 +310,10 @@ import { boot, GAMES, buildState, chatList } from './common.js';
       S.view = `game:${id}`;
       mount($('#view'), h('section', { class: 'game' },
         h('div', { class: 'game-head row' }, h('span', { class: 'game-head-icon' }, meta.icon), h('span', { class: 'eyebrow' }, meta.name)),
-        h('div', { id: 'game-root', class: 'game-root' })));
+        h('div', { id: 'game-root', class: 'game-root' }),
+        h('div', { id: 'chat-slot', class: 'chat-slot' })));
     }
+    syncChatSlot($('#chat-slot'), !gamePlaying(st));
     await loadGame(id);
     const root = $('#game-root');
     const view = window.GameViews[id];
