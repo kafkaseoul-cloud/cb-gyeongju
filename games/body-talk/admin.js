@@ -1,4 +1,5 @@
 /* 몸으로 말해요 — 관리자: 진행 로직 + 진행 패널 + 콘텐츠 관리
+   제시어와 이미지는 참가자 화면에도 공개된다 (round.currentAnswer / currentImage)
    DB 구조
      public/games/body-talk  : { themes: [요약], theme: {id,name,icon} | null, round: 공개 라운드 상태 }
      admin/content/body-talk : { themes: { <themeId>: { name, icon, order, questions: { <qid>: { answer, image, order } } } } }
@@ -116,13 +117,24 @@
         }
         case 'deleteQuestion':
           return { [`${P.content}/themes/${payload.themeId}/questions/${payload.questionId}`]: null };
+        case 'bulkImages': {
+          // 이미지 일괄 등록: sets = 기존 문제에 이미지, creates = 새 문제
+          const map = {};
+          (payload.sets || []).forEach((x) => { map[`${P.content}/themes/${x.themeId}/questions/${x.questionId}/image`] = x.image; });
+          (payload.creates || []).forEach((x, i) => {
+            const t = findTheme(ctx, x.themeId);
+            const answer = String(x.answer || '').trim().slice(0, 60);
+            if (answer) map[`${P.content}/themes/${t.id}/questions/${newKey()}${i}`] = { answer, image: x.image || null, order: Date.now() + i };
+          });
+          return map;
+        }
         default: {
           // ── 라운드 진행 (공통 퀴즈 엔진) ──
           const theme = pub(ctx).theme;
           if (!theme) throw new Error('먼저 테마를 선택하세요.');
           const pool = themesOf(ctx).find((t) => t.id === theme.id);
           const res = E.apply(type === 'setDurationRound' ? 'setDuration' : type, payload, roundOf(ctx), {
-            pool: pool ? pool.questions : [], now: ctx.now, revealImage: false,
+            pool: pool ? pool.questions : [], now: ctx.now, revealImage: true, revealAnswer: true,
           });
           return { [`${P.pub}/round`]: res.pub, [P.priv]: res.priv, ...(res.score ? ctx.score(res.score.team, res.score.delta) : {}) };
         }
@@ -152,11 +164,11 @@
       mount(root, h('div', { class: 'stack' },
         h('div', { class: 'row row-wrap' },
           h('span', { class: 'badge', style: { fontSize: '15px', padding: '6px 14px' } }, `${p.theme.icon} ${p.theme.name}`),
-          h('span', { class: 'faint link-sm' }, '제시어는 이 화면에만 보입니다. 연기자에게 화면을 보여주세요.'),
+          h('span', { class: 'faint link-sm' }, '제시어와 이미지가 참가자 화면에도 함께 표시됩니다.'),
           h('div', { class: 'spacer' }),
           h('button', { class: 'btn btn-sm btn-ghost', on: { click: () => api.act('backToThemes') } }, '테마 변경')),
         panel));
-      QuizKit.renderAdminControl(panel, E.adminView(r.pub, r.priv), api, { showImageToAll: false, imageOf: (x) => images[x.qid] });
+      QuizKit.renderAdminControl(panel, E.adminView(r.pub, r.priv), api, { showImageToAll: true, imageOf: (x) => images[x.qid] });
     },
 
     /** 콘텐츠 관리: 게임 시간 + 테마별 문제 */
@@ -167,10 +179,25 @@
       const newName = h('input', { class: 'input', placeholder: '새 테마 이름', maxlength: 20, style: { maxWidth: '220px' } });
       const newIcon = h('input', { class: 'input', placeholder: '🎲', maxlength: 4, style: { width: '72px', textAlign: 'center' } });
 
+      const allQuestions = [];
+      themes.forEach((t) => t.questions.forEach((q) => allQuestions.push({ ...q, themeId: t.id, themeName: t.name })));
+      const withImage = allQuestions.filter((q) => q.image).length;
+
       mount(root, h('div', { class: 'stack' },
         h('div', { class: 'card stack' },
           h('h3', { class: 'heading-sm' }, '⏱ 게임 시간'),
           QuizKit.durationForm(duration(ctx), api)),
+        h('div', { class: 'card stack' },
+          h('div', { class: 'row row-wrap' },
+            h('h3', { class: 'heading-sm grow' }, '🖼️ 이미지 일괄 등록'),
+            h('span', { class: 'badge badge-ghost' }, `이미지 있음 ${withImage} / ${allQuestions.length}문제`)),
+          h('p', { class: 'muted', style: { margin: 0 } }, '모든 테마의 정답과 파일 이름을 비교해 자동으로 연결해요. 테마를 가리지 않고 한 번에 올려도 됩니다.'),
+          QuizKit.bulkImageZone(api, {
+            questions: allQuestions,
+            createIn: theme ? { themeId: theme.id } : null,
+            createLabel: theme ? `매칭 안 된 파일은 '${theme.name}' 테마에 새 문제로 추가 (파일 이름 = 정답)` : '',
+            createDefault: false,
+          })),
         h('div', { class: 'card stack' },
           h('h3', { class: 'heading-sm' }, '🎭 테마 & 문제'),
           h('div', { class: 'bt-tabs' }, themes.map((t) =>
@@ -189,7 +216,7 @@
               h('button', { class: 'btn btn-sm btn-danger', on: { click: async () => {
                 if (await Kit.confirm(`"${theme.name}" 테마와 문제 ${theme.questions.length}개를 모두 삭제할까요?`, { ok: '삭제', danger: true })) api.act('deleteTheme', { themeId: theme.id });
               } } }, '테마 삭제')),
-            QuizKit.questionManager(theme.questions, api, { themeId: theme.id }, { imageHint: '선택 (진행자 화면에만 표시)' }))
+            QuizKit.questionManager(theme.questions, api, { themeId: theme.id }, { imageHint: '선택 (참가자 화면에도 정답과 함께 표시)' }))
             : h('div', { class: 'empty' }, '테마를 추가해 주세요.'))));
     },
   };

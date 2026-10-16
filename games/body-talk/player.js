@@ -27,7 +27,7 @@
       if (!root._quiz) { root._quiz = true; root._key = null; }
       QuizKit.renderPlayer(root, game.round, ctx, {
         key: 'body-talk',
-        mode: 'act',
+        mode: 'reveal',
         subtitle: `${game.theme.icon} ${game.theme.name}`,
         actHint: `테마: ${game.theme.icon} ${game.theme.name}`,
       });
