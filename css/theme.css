@@ -151,7 +151,7 @@ body::before {
 .flash-card.info { background: linear-gradient(160deg, var(--surface-3), var(--surface)); }
 .flash-card .t { font-weight: 700; letter-spacing: -0.04em; }
 .flash-card .s { font-weight: 600; letter-spacing: -0.02em; }
-.flash-card img { width: min(56vw, 240px); aspect-ratio: 1; object-fit: cover; border-radius: var(--r-lg); margin: 0 auto 18px; }
+.flash-card img { width: auto; height: auto; max-width: min(64vw, 280px); max-height: 36vh; object-fit: contain; border-radius: var(--r-lg); margin: 0 auto 18px; }
 .modal { background: var(--surface); border: 1px solid var(--hairline); border-radius: var(--r-xl); }
 .modal-backdrop { backdrop-filter: blur(6px); }
 
@@ -249,13 +249,15 @@ body::before {
     radial-gradient(100% 120% at 50% 0%, rgba(88, 101, 242, 0.28), transparent 60%),
     var(--surface);
 }
+/* 이미지 원본 비율 그대로 (포스터·상품·단체 사진 모두 잘리지 않게) */
 .qk-reveal-img {
-  width: min(70vw, 280px);
-  aspect-ratio: 1;
-  object-fit: cover;
+  display: block;
+  width: auto;
+  height: auto;
+  max-width: min(100%, 520px);
+  max-height: min(48vh, 440px);
+  object-fit: contain;
   border-radius: var(--r-lg);
-  border: 1px solid var(--hairline);
-  background: var(--surface-3);
   box-shadow: var(--shadow-float);
 }
 .qk-reveal-word {
@@ -269,7 +271,7 @@ body::before {
 
 /* 관리자 진행 패널에서는 정답/패스 버튼이 한눈에 보이도록 카드를 낮게 */
 .qk-admin .qk-reveal { min-height: 150px; padding: var(--s-lg) var(--s-xl); gap: var(--s-sm); }
-.qk-admin .qk-reveal-img { width: 150px; }
+.qk-admin .qk-reveal-img { max-width: min(100%, 360px); max-height: 220px; }
 .qk-admin .qk-reveal-word { font-size: clamp(36px, 5vw, 60px); }
 
 /* 이미지 일괄 등록 */
@@ -292,3 +294,6 @@ body::before {
 .qk-bulk-row.miss { opacity: 0.6; }
 .qk-bulk-row .thumb { width: 44px; height: 44px; }
 .qk-bulk-modal input[type=checkbox] { width: 18px; height: 18px; accent-color: var(--primary); }
+
+/* 목록 썸네일도 잘리지 않게 (여백은 배경색으로) */
+.qk-hist .thumb, .qk-qrow .thumb, .qk-bulk-row .thumb, .qk-upload .thumb { object-fit: contain; }

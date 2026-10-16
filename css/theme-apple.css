@@ -1,0 +1,301 @@
+/* ==========================================================================
+   Apple 정리 레이어 — design/DESIGN-apple.md (다크 유지)
+   - 색은 행동(버튼)에만, 파랑 하나 / 장식용 그라데이션·광효과 없음
+   - 그림자는 사진(이미지)에만 / 카드는 단색 서피스 + 18px 라운드
+   - 버튼 문법 두 가지: 필(pill) 버튼, 큰 판정 버튼(18px)
+   - 지금 눌러야 하는 버튼 하나만 크게, 나머지는 작게
+   theme.css 뒤에 로드되어 덮어쓴다. (지우면 이전 디자인으로 복귀)
+   ========================================================================== */
+
+:root {
+  --canvas: #000000;
+  --surface: #1c1c1e;
+  --surface-2: #2c2c2e;
+  --surface-3: #3a3a3c;
+  --surface-indigo: var(--surface);
+  --surface-indigo-2: var(--surface-2);
+  --surface-onyx: var(--surface-2);
+  --surface-black: #000000;
+  --hairline: rgba(255, 255, 255, 0.08);
+  --hairline-strong: rgba(255, 255, 255, 0.16);
+
+  --ink: #f5f5f7;
+  --ink-dim: rgba(245, 245, 247, 0.64);
+  --ink-faint: rgba(245, 245, 247, 0.4);
+
+  --primary: #0071e3;          /* Action Blue (버튼 채움) */
+  --primary-hover: #0077ed;
+  --primary-text: #2997ff;     /* 어두운 바탕 위 파란 글자 */
+  --primary-soft: rgba(41, 151, 255, 0.16);
+  --link: #2997ff;
+  --magenta: #ff375f;
+  --magenta-soft: rgba(255, 55, 95, 0.16);
+  --tier: var(--ink-dim);
+  --green: #30d158;
+  --danger: #ff453a;
+
+  --team-a: #5e5ce6;
+  --team-b: #ff375f;
+
+  --r-xs: 5px; --r-sm: 8px; --r-md: 11px; --r-lg: 18px; --r-xl: 18px; --r-pill: 9999px;
+
+  --shadow-float: 0 12px 40px rgba(0, 0, 0, 0.5);
+  --shadow-photo: 3px 5px 30px rgba(0, 0, 0, 0.55);
+}
+
+body { background: var(--canvas); letter-spacing: -0.01em; }
+body::before { display: none; }
+
+/* ───────── 타이포: 600 굵기, 타이트한 자간 ───────── */
+.display-xl, .display-lg, .display-md, .heading-lg { font-weight: 600; }
+.display-md { font-size: clamp(26px, 4.6vw, 40px); letter-spacing: -0.03em; }
+.heading-lg { font-size: clamp(24px, 3.6vw, 34px); }
+.heading-sm { font-weight: 600; font-size: 17px; letter-spacing: -0.02em; }
+.body-lg { font-size: 17px; font-weight: 400; line-height: 1.47; }
+.link-sm { font-size: 13px; font-weight: 500; }
+.eyebrow { color: var(--ink-faint); font-size: 12px; font-weight: 600; letter-spacing: 0.06em; }
+.label { color: var(--ink-faint); font-size: 12px; font-weight: 600; letter-spacing: 0.04em; margin-bottom: 6px; }
+a { color: var(--link); }
+
+/* ───────── 버튼 ───────── */
+.btn {
+  min-height: 40px;
+  padding: 9px 18px;
+  border-radius: var(--r-pill);
+  font-size: 15px;
+  font-weight: 600;
+  gap: 6px;
+  box-shadow: none;
+  transition: transform .1s ease, background-color .15s ease, opacity .15s ease;
+}
+.btn:active:not(:disabled) { transform: scale(0.96); }
+.btn:disabled { opacity: 0.3; }
+.btn:focus-visible { outline: 2px solid var(--primary-text); outline-offset: 2px; }
+.btn-primary, .btn-green { background: var(--primary); color: #fff; }
+.btn-primary:hover:not(:disabled), .btn-green:hover:not(:disabled) { background: var(--primary-hover); filter: none; }
+.btn-ghost { background: var(--surface-2); color: var(--ink); box-shadow: none; }
+.btn-ghost:hover:not(:disabled) { background: var(--surface-3); }
+.btn-white { background: #f5f5f7; color: #1d1d1f; }
+.btn-magenta { background: var(--danger); color: #fff; }
+.btn-danger { background: transparent; color: var(--danger); box-shadow: inset 0 0 0 1px rgba(255, 69, 58, 0.5); }
+.btn-danger:hover:not(:disabled) { background: rgba(255, 69, 58, 0.12); }
+.btn-dark { background: rgba(255, 255, 255, 0.1); font-weight: 500; }
+.btn-dark:hover { background: rgba(255, 255, 255, 0.16); }
+.btn-sm { min-height: 32px; padding: 6px 14px; font-size: 13px; font-weight: 500; border-radius: var(--r-pill); }
+.btn-lg { min-height: 50px; padding: 12px 24px; font-size: 17px; }
+.btn-xl { min-height: 76px; padding: 16px 28px; font-size: 22px; font-weight: 600; border-radius: var(--r-lg); letter-spacing: -0.02em; }
+.btn-icon { width: 34px; min-height: 34px; padding: 0; font-size: 18px; }
+
+/* ───────── 서피스: 단색, 테두리·그림자·그라데이션 없음 ───────── */
+.card, .card-xl, .card-gradient, .card-blurple, .card-black, .modal, .game-panel {
+  background: var(--surface);
+  border: 0;
+  border-radius: var(--r-lg);
+  box-shadow: none;
+}
+.card { padding: 20px; }
+.card-xl { padding: 24px; }
+.card-gradient, .card-black { padding: 32px 24px; }
+.card-black { background: var(--surface); }
+.card-blurple { padding: 24px; }
+
+.badge { background: var(--surface-2); color: var(--ink-dim); font-weight: 600; font-size: 12px; padding: 3px 10px; }
+.badge-primary { background: var(--primary-soft); color: var(--primary-text); }
+.badge-ghost { background: var(--surface-2); color: var(--ink-dim); }
+.badge-a { background: rgba(94, 92, 230, 0.2); color: #a9a8ff; }
+.badge-b { background: rgba(255, 55, 95, 0.18); color: #ff8fa6; }
+
+.input, .textarea, .select { background: var(--surface-2); border: 1px solid transparent; border-radius: var(--r-md); min-height: 44px; }
+.input:focus, .textarea:focus, .select:focus { background: var(--surface-2); border-color: var(--primary-text); box-shadow: 0 0 0 3px var(--primary-soft); }
+.input-lg { min-height: 52px; font-size: 17px; }
+
+.empty { border: 1px dashed var(--hairline-strong); color: var(--ink-faint); padding: 24px; }
+.thumb { background: var(--surface-3); }
+.avatar { background: var(--surface-3); }
+.avatar-wrap .dot { border-color: var(--surface); }
+.avatar-wrap .dot.on, .conn-dot.on { background: var(--green); }
+
+/* 토스트 · 플래시 · 모달 */
+.toast { background: rgba(44, 44, 46, 0.92); box-shadow: var(--shadow-float); }
+.toast.error { box-shadow: var(--shadow-float), inset 0 0 0 1px var(--danger); }
+.flash { background: rgba(0, 0, 0, 0.72); }
+.flash-card { border: 0; box-shadow: none; padding: 36px 28px; }
+.flash-card.correct { background: var(--primary); }
+.flash-card.pass, .flash-card.info { background: var(--surface-2); }
+.flash-card .t { font-weight: 600; }
+.modal { padding: 24px; box-shadow: var(--shadow-float); }
+.modal-backdrop { background: rgba(0, 0, 0, 0.6); }
+
+/* 점수판 */
+.score-team { border: 0; border-radius: var(--r-md); padding: 8px 14px; }
+.score-team.a { background: rgba(94, 92, 230, 0.18); }
+.score-team.b { background: rgba(255, 55, 95, 0.16); }
+.score-team .name { color: var(--ink-dim); font-weight: 600; }
+.score-team .pts { font-weight: 600; font-size: 28px; }
+.score-team.a .pts { color: #b3b2ff; }
+.score-team.b .pts { color: #ff9fb3; }
+.timer { font-weight: 600; letter-spacing: -0.04em; }
+.timer.is-low { color: var(--danger); }
+
+/* ═════════════════ 참가자 화면 ═════════════════ */
+.sticky-head { background: rgba(0, 0, 0, 0.72); border-bottom: 1px solid var(--hairline); }
+.brand { font-weight: 600; font-size: 17px; }
+.brand-mark { background: var(--surface-2); border-radius: var(--r-sm); width: 28px; height: 28px; font-size: 12px; }
+.me-chip { background: var(--surface-2); border: 0; font-weight: 500; }
+.join-card { padding: 28px 24px; }
+.avatar-placeholder { background: var(--surface-2); }
+.avatar-picker-badge { background: var(--primary); color: #fff; border-color: var(--surface); }
+.player-tile.is-me .player-name { color: var(--primary-text); }
+.chat-log { background: var(--surface-2); border: 0; border-radius: var(--r-md); }
+.bubble { background: var(--surface-3); }
+.chat-msg.mine .bubble { background: var(--primary); }
+.chat-msg.admin .bubble { background: rgba(255, 255, 255, 0.14); color: var(--ink); }
+.game-card,
+.game-card.c-magenta, .game-card.c-primary, .game-card.c-onyx { background: var(--surface); border: 0; border-radius: var(--r-lg); padding: 20px; }
+.game-icon { background: var(--surface-2); border-radius: 14px; width: 60px; height: 60px; font-size: 34px; }
+
+/* ═════════════════ 관리자 화면 ═════════════════ */
+.sidebar { background: #000; border-right: 1px solid var(--hairline); }
+.side-brand { font-weight: 600; font-size: 16px; }
+.nav-row { padding: 9px 12px; border-radius: var(--r-sm); font-weight: 500; font-size: 14px; color: var(--ink-dim); }
+.nav-row.on { background: var(--surface-2); color: var(--ink); }
+.nav-row.on::before { display: none; }
+.nav-group { font-size: 11px; font-weight: 600; color: var(--ink-faint); }
+.admin-top { background: rgba(0, 0, 0, 0.72); border-bottom: 1px solid var(--hairline); padding: 12px 24px; margin-bottom: 16px; }
+#phase-pill { background: var(--surface-2); color: var(--ink-dim); }
+.admin-team { border: 0; border-radius: var(--r-md); padding: 8px 10px 8px 16px; }
+.admin-team.a { background: rgba(94, 92, 230, 0.18); }
+.admin-team.b { background: rgba(255, 55, 95, 0.16); }
+.admin-team .link-sm { font-size: 11px; color: var(--ink-faint); opacity: 1 !important; }
+.team-name-input { font-size: 16px; font-weight: 600; }
+.admin-pts { font-weight: 600; font-size: 32px; min-width: 52px; }
+.admin-team.a .admin-pts { color: #b3b2ff; }
+.admin-team.b .admin-pts { color: #ff9fb3; }
+.page { gap: 16px; }
+
+/* 진행 단계: 낮고 단정하게 */
+.steps { gap: 8px; }
+.step { padding: 10px 14px; gap: 10px; border: 0; border-radius: var(--r-md); background: var(--surface); box-shadow: none; }
+.step strong { font-size: 15px; font-weight: 600; }
+.step .link-sm { display: block; }
+.step-num { width: 26px; height: 26px; font-size: 13px; background: var(--surface-3); }
+.step.on { background: var(--surface); border: 0; box-shadow: inset 0 0 0 1.5px var(--primary-text); }
+.step.on .step-num { background: var(--primary); color: #fff; }
+.lobby-cta { background: var(--surface); }
+.lobby-cta .muted { word-break: break-all; }
+
+/* 게임 고르기 타일 */
+.admin-games { gap: 8px; grid-template-columns: repeat(auto-fill, minmax(min(260px, 100%), 1fr)); }
+.admin-game, .admin-game.on.c-magenta, .admin-game.on.c-primary, .admin-game.on.c-onyx {
+  background: var(--surface); border: 0; border-radius: var(--r-md); padding: 12px 14px; box-shadow: none; outline: none;
+}
+.admin-game:hover { transform: none; background: var(--surface-2); }
+.admin-game.on { box-shadow: inset 0 0 0 1.5px var(--primary-text); }
+.admin-game strong { font-weight: 600; }
+.admin-game .link-sm { display: block; }
+.admin-game-icon { width: 40px; height: 40px; font-size: 24px; border-radius: 10px; background: var(--surface-2); }
+
+/* 게임 진행 중: 진행 패널을 맨 위로, 단계·게임 바꾸기는 작게 */
+.page.is-game { display: flex; flex-direction: column; }
+.page.is-game .sec-phase { order: 0; }
+.page.is-game .sec-game { order: 1; }
+.page.is-game .sec-games { order: 2; }
+.page.is-game .step { padding: 8px 12px; }
+.page.is-game .step .link-sm { display: none; }
+.page.is-game .admin-games { grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); }
+.page.is-game .admin-game { padding: 8px 12px; }
+.page.is-game .admin-game .link-sm, .page.is-game .admin-game .badge { display: none; }
+.page.is-game .admin-game-icon { width: 30px; height: 30px; font-size: 18px; }
+
+.game-panel { padding: 20px 24px; }
+.game-panel > .row:first-child .heading-sm { font-size: 19px; }
+
+.team-col { background: var(--surface); border: 0; border-radius: var(--r-lg); }
+.team-col-a { box-shadow: inset 0 3px 0 var(--team-a); }
+.team-col-b { box-shadow: inset 0 3px 0 var(--team-b); }
+.prow { background: var(--surface-2); border-radius: var(--r-md); }
+.admin-chat-log { background: var(--surface-2); border: 0; }
+.url-opt { background: var(--surface-2); border: 1px solid transparent; }
+.url-opt.on { border-color: var(--primary-text); background: var(--primary-soft); }
+.qr-full { background: #000; }
+.qr-full::before { display: none; }
+
+/* ═════════════════ 퀴즈 공통 ═════════════════ */
+.seg { display: inline-flex; width: max-content; max-width: 100%; background: var(--surface-2); border: 0; padding: 3px; gap: 2px; border-radius: var(--r-pill); }
+.seg-btn { min-height: 34px; padding: 6px 18px; font-weight: 600; color: var(--ink-dim); border-radius: var(--r-pill); }
+.seg-btn.on.team-a { background: var(--team-a); color: #fff; }
+.seg-btn.on.team-b { background: var(--team-b); color: #fff; }
+.seg-btn.on.plain { background: var(--primary); }
+.seg-sm .seg-btn { min-height: 28px; padding: 3px 10px; }
+
+.qk-team { background: var(--surface-2); border: 0; font-size: 15px; font-weight: 600; }
+.qk-team.team-a { background: rgba(94, 92, 230, 0.2); }
+.qk-team.team-b { background: rgba(255, 55, 95, 0.18); }
+.qk-team-label { background: rgba(255, 255, 255, 0.1); font-weight: 500; }
+.qk-timer { font-size: clamp(80px, 22vw, 180px); }
+.qk-photo { border: 0; box-shadow: none; background: var(--surface); }
+.qk-paused { background: rgba(0, 0, 0, 0.8); }
+.qk-hist { background: var(--surface-2); }
+.qk-big { font-weight: 600; }
+
+/* 제시어 카드: 단색, 이미지는 원본 비율 + 사진 그림자 */
+.qk-reveal { background: var(--surface); border: 0; min-height: 180px; padding: 28px 24px; gap: 14px; }
+.qk-reveal-img { border: 0; border-radius: var(--r-md); box-shadow: var(--shadow-photo); background: transparent; }
+.qk-reveal-word { font-weight: 700; }
+.qk-reveal-meta { font-weight: 500; letter-spacing: 0.02em; }
+
+/* 관리자 진행 패널 */
+.qk-admin { gap: 14px; }
+.qk-admin-top { align-items: center; gap: 12px; }
+.qk-admin-top .label { margin-bottom: 4px; }
+.qk-admin-timer { font-size: 56px; }
+.qk-admin .qk-reveal { min-height: 120px; padding: 18px 20px; gap: 10px; background: var(--surface-2); }
+.qk-admin .qk-reveal-word { font-size: clamp(32px, 4.4vw, 52px); }
+.qk-admin .qk-reveal .muted { font-size: 15px; }
+.qk-admin-judge { gap: 10px; }
+.qk-admin-judge .btn, .qk-admin-main .btn { min-height: 88px; font-size: 26px; border-radius: var(--r-lg); }
+.qk-admin-judge .btn-ghost { background: var(--surface-3); }
+.qk-admin-main { display: grid; }
+.qk-admin-main .btn { width: 100%; }
+.qk-admin-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.qk-admin-tools:not(:has(.btn)) { display: none; }
+.qk-admin-history { background: var(--surface-2); padding: 14px 18px; }
+.qk-admin-history summary { font-size: 15px; color: var(--ink-dim); }
+.qk-admin-history .qk-hist { background: var(--surface-3); }
+
+.qk-add { background: var(--surface-2); border: 0; }
+.qk-qrow { background: var(--surface-2); }
+.qk-upload { border: 1px dashed var(--hairline-strong); }
+.qk-bulk-drop { background: var(--surface-2); border: 1.5px dashed var(--hairline-strong); }
+.qk-bulk-drop:hover, .qk-bulk-drop:focus-visible, .qk-bulk-drop.over { border-color: var(--primary-text); }
+.qk-bulk-row { background: var(--surface-2); }
+
+/* 게임별 */
+.bt-theme { background: var(--surface); border: 0; }
+.bt-admin-theme { background: var(--surface-2); border: 0; padding: 16px; border-radius: var(--r-md); }
+.bt-admin-theme:hover { border: 0; box-shadow: inset 0 0 0 1.5px var(--primary-text); transform: none; }
+.bt-tab { border: 0; background: var(--surface-2); font-weight: 500; font-size: 13px; padding: 6px 14px; }
+.bt-tab.on { background: var(--primary); color: #fff; }
+.zb { background: var(--surface); border: 0; }
+.zb-emoji { filter: none; }
+.zb-ended .zb-title { color: var(--danger); }
+.zb-admin { padding: 24px; }
+
+@media (max-width: 860px) {
+  .admin-top { padding: 12px 16px; }
+  .qk-admin-judge .btn, .qk-admin-main .btn { min-height: 76px; font-size: 22px; }
+  .qk-admin-timer { font-size: 48px; }
+}
+
+/* 관리자: 이미지가 있으면 이미지 왼쪽 · 제시어 오른쪽 (판정 버튼이 화면 안에 보이도록) */
+.qk-admin .qk-reveal:has(.qk-reveal-img) { grid-template-columns: auto minmax(0, auto); justify-content: center; align-items: center; column-gap: 28px; text-align: left; justify-items: start; }
+.qk-admin .qk-reveal:has(.qk-reveal-img) .qk-reveal-meta { grid-column: 1 / -1; justify-self: center; }
+.qk-admin .qk-reveal-img { max-height: 168px; max-width: 240px; }
+
+/* 참가자: 타이머 + 이미지 + 제시어가 한 화면에 들어오게 */
+.qk-stage .qk-reveal-img { max-height: min(38vh, 420px); }
+@media (max-width: 600px) {
+  .qk-timer { font-size: clamp(64px, 20vw, 120px); margin: 0; }
+  .qk-reveal { padding: 20px 16px; gap: 12px; }
+  .qk-reveal-word { font-size: clamp(32px, 9vw, 56px); }
+}
