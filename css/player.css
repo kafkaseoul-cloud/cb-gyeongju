@@ -114,3 +114,8 @@
   .card-xl { padding: var(--s-xl); }
   .card-gradient { padding: var(--s-xl); border-radius: 28px; }
 }
+
+/* 게임 선택 · 게임 사이 쉬는 시간의 채팅 */
+.chat-slot { margin-top: var(--s-md); }
+.chat-slot .chat-log { height: min(36vh, 320px); }
+.game:has(.chat-slot:not([hidden])) .game-root { min-height: 0; }
