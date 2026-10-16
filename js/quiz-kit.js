@@ -25,6 +25,14 @@
     });
   }
 
+  /** 이미지(위) + 정답(아래) 가운데 정렬 카드 */
+  function revealCard({ image, word, meta }) {
+    return h('div', { class: 'qk-reveal' },
+      meta ? h('div', { class: 'qk-reveal-meta' }, meta) : null,
+      image ? h('img', { class: 'qk-reveal-img', src: image, alt: '' }) : null,
+      h('div', { class: 'qk-reveal-word' }, word));
+  }
+
   function teamPill(ctx, team, label = '도전 팀') {
     return h('div', { class: `qk-team team-${team.toLowerCase()}` }, h('span', { class: 'qk-team-label' }, label), h('strong', null, ctx.teamName(team)));
   }
@@ -80,14 +88,20 @@
       }
 
       // playing / paused
-      const center = opts.mode === 'image'
-        ? (round.currentImage
+      let center;
+      if (opts.mode === 'reveal' && round.currentAnswer) {
+        // 몸으로 말해요: 정답과 이미지를 모두에게 공개 (가운데 정렬)
+        center = revealCard({ image: round.currentImage, word: round.currentAnswer, meta: opts.subtitle });
+      } else if (opts.mode === 'image') {
+        center = round.currentImage
           ? h('div', { class: 'qk-photo' }, h('img', { src: round.currentImage, alt: '문제 이미지' }))
-          : h('div', { class: 'qk-photo qk-photo-empty' }, h('div', { class: 'display-md' }, '?'), h('div', { class: 'muted' }, '이미지 없는 문제 — 진행자의 설명을 들어보세요')))
-        : h('div', { class: 'card-gradient qk-act' },
+          : h('div', { class: 'qk-photo qk-photo-empty' }, h('div', { class: 'display-md' }, '?'), h('div', { class: 'muted' }, '이미지 없는 문제 — 진행자의 설명을 들어보세요'));
+      } else {
+        center = h('div', { class: 'card-gradient qk-act' },
           h('div', { class: 'qk-act-emoji' }, '🙆'),
           h('div', { class: 'display-md' }, playingMine ? '맞혀라!' : '몸으로 말해요'),
           h('p', { class: 'body-lg', style: { margin: 0 } }, opts.actHint || '제시어는 진행자만 볼 수 있어요'));
+      }
 
       mount(el, h('div', { class: 'qk-stage' },
         h('div', { class: 'qk-topline' },
@@ -116,12 +130,8 @@
     const live = ['playing', 'paused'].includes(round.status);
 
     const current = round.current && live
-      ? h('div', { class: 'qk-admin-answer' },
-        round.current.image ? h('img', { class: 'qk-admin-img', src: round.current.image, alt: '' }) : null,
-        h('div', { class: 'grow' },
-          h('div', { class: 'eyebrow' }, `#${round.number} 제시어 ${opts.showImageToAll ? '(정답)' : ''}`),
-          h('div', { class: 'qk-admin-word' }, round.current.answer)))
-      : h('div', { class: 'qk-admin-answer qk-admin-answer-empty' },
+      ? revealCard({ image: round.current.image, word: round.current.answer, meta: `#${round.number} ${opts.showImageToAll ? '정답' : '제시어 (진행자만 보임)'}` })
+      : h('div', { class: 'qk-reveal' },
         h('div', { class: 'muted' }, round.status === 'ended' ? '라운드가 끝났어요. 새 라운드를 시작하세요.' : '시작을 누르면 첫 문제가 출제됩니다.'));
 
     mount(root,
@@ -242,5 +252,113 @@
       } } }, '삭제'));
   }
 
-  window.QuizKit = { renderPlayer, renderAdminControl, durationForm, questionManager, historyList };
+
+  // ─────────────────────────── 이미지 일괄 등록 ───────────────────────────
+
+  /** 파일 이름과 정답을 비교하기 위한 정규화 (맥 한글 자모 분리, 공백·기호, "(1)" 사본 표시 제거) */
+  function normName(s) {
+    return String(s || '').normalize('NFC').toLowerCase()
+      .replace(/\.[a-z0-9]{2,5}$/, '')
+      .replace(/\s*\(\d+\)$/, '')
+      .replace(/[\s\-_.·:,!?'"()\[\]~&]/g, '');
+  }
+  const baseName = (f) => f.name.normalize('NFC').replace(/\.[a-zA-Z0-9]{2,5}$/, '').replace(/\s*\(\d+\)$/, '').trim();
+
+  /**
+   * 일괄 등록 영역: 이미지 여러 장을 끌어다 놓으면 "파일 이름 = 정답"으로 문제에 자동 연결
+   * @param {object} api       { act } — 게임 모듈의 'bulkImages' 명령을 사용
+   * @param {object} o
+   *   questions   : [{ id, answer, image, themeId?, themeName? }] 매칭 대상
+   *   createIn    : 매칭 안 된 파일을 새 문제로 추가할 때 함께 보낼 값 (예: { themeId }) — null이면 추가 불가
+   *   createLabel : 새 문제 추가 옵션 설명
+   *   createDefault: 새 문제 추가 기본 체크 여부
+   */
+  function bulkImageZone(api, o) {
+    const input = h('input', { type: 'file', accept: 'image/*', multiple: true, hidden: true });
+    const zone = h('div', { class: 'qk-bulk-drop', tabindex: 0, role: 'button' },
+      h('div', { class: 'qk-bulk-icon' }, '🖼️'),
+      h('div', { class: 'qk-bulk-title' }, '이미지를 여기로 끌어다 놓거나 클릭해서 선택'),
+      h('div', { class: 'faint link-sm' }, '파일 이름을 정답과 같게 맞춰 주세요 · 예) 기생충.jpg, 새우깡.png · 여러 장 한 번에'),
+      input);
+    const open = () => input.click();
+    zone.addEventListener('click', (e) => { if (e.target !== input) open(); });
+    zone.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(); } });
+    ['dragenter', 'dragover'].forEach((ev) => zone.addEventListener(ev, (e) => { e.preventDefault(); zone.classList.add('over'); }));
+    ['dragleave', 'drop'].forEach((ev) => zone.addEventListener(ev, (e) => { e.preventDefault(); zone.classList.remove('over'); }));
+    zone.addEventListener('drop', (e) => review([...(e.dataTransfer.files || [])]));
+    input.addEventListener('change', () => { review([...input.files]); input.value = ''; });
+
+    function review(files) {
+      files = files.filter((f) => /^image\//.test(f.type));
+      if (!files.length) { Kit.toast('이미지 파일이 없어요.', 'error'); return; }
+      const index = new Map();
+      o.questions.forEach((q) => {
+        const k = normName(q.answer);
+        if (!index.has(k)) index.set(k, []);
+        index.get(k).push(q);
+      });
+      const rows = files.map((file) => ({ file, url: URL.createObjectURL(file), targets: index.get(normName(file.name)) || [] }));
+      const matched = rows.filter((r) => r.targets.length);
+      const unmatched = rows.filter((r) => !r.targets.length);
+
+      const replace = h('input', { type: 'checkbox', checked: true });
+      const create = h('input', { type: 'checkbox', checked: !!o.createDefault });
+      const go = h('button', { class: 'btn btn-primary' }, '등록');
+      const close = () => { rows.forEach((r) => URL.revokeObjectURL(r.url)); bd.remove(); };
+
+      const row = (r) => h('div', { class: `qk-bulk-row ${r.targets.length ? '' : 'miss'}` },
+        h('img', { class: 'thumb', src: r.url, alt: '' }),
+        h('div', { class: 'grow', style: { minWidth: 0 } },
+          h('div', { class: 'ellipsis', style: { fontWeight: 600 } }, r.file.name),
+          h('div', { class: 'faint link-sm ellipsis' }, r.targets.length
+            ? `→ ${r.targets.map((t) => (t.themeName ? `${t.themeName} · ` : '') + t.answer + (t.image ? ' (이미지 교체)' : '')).join(', ')}`
+            : '매칭되는 정답 없음')),
+        h('span', { class: `badge ${r.targets.length ? 'badge-primary' : 'badge-ghost'}` }, r.targets.length ? '매칭' : '미매칭'));
+
+      const bd = h('div', { class: 'modal-backdrop', on: { click: (e) => { if (e.target === bd && !go.disabled) close(); } } },
+        h('div', { class: 'modal stack qk-bulk-modal' },
+          h('h3', { class: 'heading-sm' }, '이미지 일괄 등록'),
+          h('div', { class: 'row row-wrap' },
+            h('span', { class: 'badge badge-ghost' }, `파일 ${rows.length}개`),
+            h('span', { class: 'badge badge-primary' }, `매칭 ${matched.length}개`),
+            h('span', { class: 'badge badge-ghost' }, `미매칭 ${unmatched.length}개`)),
+          h('label', { class: 'row link-sm' }, replace, '이미 이미지가 있는 문제도 새 이미지로 교체'),
+          o.createIn && unmatched.length ? h('label', { class: 'row link-sm' }, create, o.createLabel || '매칭 안 된 파일은 파일 이름을 정답으로 새 문제 추가') : null,
+          h('div', { class: 'qk-bulk-list' }, [...matched, ...unmatched].map(row)),
+          h('div', { class: 'row', style: { justifyContent: 'flex-end' } },
+            h('button', { class: 'btn btn-ghost', on: { click: () => { if (!go.disabled) close(); } } }, '취소'), go)));
+      document.body.appendChild(bd);
+
+      go.addEventListener('click', async () => {
+        const jobs = [];
+        matched.forEach((r) => {
+          const targets = r.targets.filter((t) => replace.checked || !t.image);
+          if (targets.length) jobs.push({ r, targets });
+        });
+        if (o.createIn && create.checked) unmatched.forEach((r) => jobs.push({ r, create: true }));
+        if (!jobs.length) { Kit.toast('등록할 이미지가 없어요.', 'error'); return; }
+        go.disabled = true;
+        let done = 0, fail = 0;
+        const BATCH = 6;
+        for (let i = 0; i < jobs.length; i += BATCH) {
+          const sets = [], creates = [];
+          for (const job of jobs.slice(i, i + BATCH)) {
+            try {
+              const image = await Kit.resizeImage(job.r.file, { max: 800, quality: 0.8 });
+              if (job.create) creates.push({ ...o.createIn, answer: baseName(job.r.file).slice(0, 60), image });
+              else job.targets.forEach((t) => sets.push({ themeId: t.themeId || null, questionId: t.id, image }));
+            } catch { fail++; }
+            done++;
+            go.textContent = `등록 중 ${done}/${jobs.length}`;
+          }
+          if ((sets.length || creates.length) && !(await api.act('bulkImages', { sets, creates }))) { fail += sets.length + creates.length; break; }
+        }
+        Kit.toast(fail ? `완료 (실패 ${fail}개)` : `이미지 ${jobs.length}개를 등록했어요.`, fail ? 'error' : '');
+        close();
+      });
+    }
+    return zone;
+  }
+
+  window.QuizKit = { renderPlayer, renderAdminControl, durationForm, questionManager, historyList, bulkImageZone };
 })();

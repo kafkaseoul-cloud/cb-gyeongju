@@ -35,7 +35,7 @@
 
   function initial(duration) {
     return {
-      pub: { status: 'ready', team: 'A', number: 0, stats: { correct: 0, pass: 0 }, timer: Timer.create(duration), currentImage: null, lastResult: null, history: null },
+      pub: { status: 'ready', team: 'A', number: 0, stats: { correct: 0, pass: 0 }, timer: Timer.create(duration), currentImage: null, currentAnswer: null, lastResult: null, history: null },
       priv: { current: null, used: {}, history: [], seq: 0 },
     };
   }
@@ -52,8 +52,8 @@
     return { pub: p, priv: q };
   }
 
-  function draw(r, pool, revealImage) {
-    if (!pool.length) { r.priv.current = null; r.pub.currentImage = null; return; }
+  function draw(r, pool, revealImage, revealAnswer) {
+    if (!pool.length) { r.priv.current = null; r.pub.currentImage = null; r.pub.currentAnswer = null; return; }
     let cands = pool.filter((q) => !r.priv.used[q.id]);
     if (!cands.length) {
       r.priv.used = {};
@@ -65,6 +65,7 @@
     r.priv.current = { id: q.id, answer: q.answer, image: q.image || null };
     r.pub.number += 1;
     r.pub.currentImage = revealImage ? (q.image || null) : null;
+    r.pub.currentAnswer = revealAnswer ? q.answer : null;
   }
 
   const stats = (history) => ({
@@ -76,7 +77,7 @@
    * 명령 실행
    * @returns {{pub, priv, score: null | {team, delta}}}
    */
-  function apply(type, payload, state, { pool, now, revealImage }) {
+  function apply(type, payload, state, { pool, now, revealImage, revealAnswer = false }) {
     const r = { pub: clone(state.pub), priv: clone(state.priv) };
     let score = null;
     const p = r.pub;
@@ -86,7 +87,7 @@
         if (p.status === 'ended') Object.assign(r, reset(r));
         if (r.pub.status !== 'ready') break;
         if (!pool.length) throw new Error('등록된 문제가 없습니다. 콘텐츠 관리에서 문제를 추가하세요.');
-        draw(r, pool, revealImage);
+        draw(r, pool, revealImage, revealAnswer);
         r.pub.status = 'playing';
         r.pub.timer = Timer.start(r.pub.timer, now);
         break;
@@ -107,7 +108,7 @@
         r.priv.seq = (r.priv.seq || 0) + 1;
         p.lastResult = { type, answer: done.answer, team: p.team, seq: r.priv.seq, at: now };
         if (type === 'correct') score = { team: p.team, delta: 1 };
-        draw(r, pool, revealImage);
+        draw(r, pool, revealImage, revealAnswer);
         break;
       }
       case 'undo': {
@@ -143,13 +144,14 @@
 
     r.pub.stats = stats(r.priv.history);
     r.pub.history = r.pub.status === 'ended' ? r.priv.history.map(({ answer, result, team }) => ({ answer, result, team })) : null;
-    if (!LIVE.includes(r.pub.status)) r.pub.currentImage = null;
+    if (!LIVE.includes(r.pub.status)) { r.pub.currentImage = null; r.pub.currentAnswer = null; }
+    if (r.pub.currentAnswer === undefined) r.pub.currentAnswer = null;
     return { pub: r.pub, priv: r.priv, score };
   }
 
   function reset(r) {
     return {
-      pub: { ...r.pub, status: 'ready', number: 0, timer: Timer.reset(r.pub.timer), currentImage: null, history: null },
+      pub: { ...r.pub, status: 'ready', number: 0, timer: Timer.reset(r.pub.timer), currentImage: null, currentAnswer: null, history: null },
       priv: { ...r.priv, current: null, history: [] },
     };
   }
