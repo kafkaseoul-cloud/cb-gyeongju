@@ -3,7 +3,8 @@
   display: grid; justify-items: center; text-align: center; gap: var(--s-sm);
   padding: var(--s-section) var(--s-md);
   border-radius: var(--r-xl);
-  background: radial-gradient(120% 90% at 50% 0%, rgba(53, 237, 126, 0.10), transparent 60%), var(--surface-black);
+  background: radial-gradient(120% 90% at 50% 0%, rgba(53, 237, 126, 0.08), transparent 60%), #000;
+  border: 1px solid var(--hairline);
   min-height: 60vh;
   align-content: center;
 }
