@@ -5,7 +5,7 @@
 - **화면(웹사이트)**: GitHub Pages — 무료, 주소 예: `https://아이디.github.io/game-night/`
 - **실시간 데이터**: Firebase Realtime Database + Authentication — 무료(Spark) 플랜으로 충분
 - 서버 PC를 켜둘 필요가 없습니다. 인터넷만 되면 어디서든 접속됩니다.
-- 디자인: `design/DESIGN-discord.md` × `design/DESIGN-dji.md` (모던 테마 레이어: `css/theme.css`)
+- 디자인: `design/DESIGN-apple.md` 기준 다크 테마 (`css/theme-apple.css`, 이전 레이어 `css/theme.css` 위에 덮어씀)
 
 ---
 
