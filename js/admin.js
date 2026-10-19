@@ -232,8 +232,10 @@ import { boot, GAMES, buildState, chatList, defaultJoinUrl, DEFAULT_PUBLIC } fro
       return null;
     },
     async resetEvent() {
-      const map = { players: null, chat: null, 'public/phase': 'lobby', 'public/currentGameId': null,
+      // 보안 규칙상 players 전체를 한 번에 지울 수 없어 참가자별로 삭제한다 (한 번에 지우면 초기화 전체가 거부됨)
+      const map = { chat: null, 'public/phase': 'lobby', 'public/currentGameId': null,
         'public/teams/A/score': 0, 'public/teams/B/score': 0, 'public/games': null, 'admin/rounds': null };
+      Object.keys(S.raw.players || {}).forEach((uid) => { map[`players/${uid}`] = null; });
       return map;
     },
   };
