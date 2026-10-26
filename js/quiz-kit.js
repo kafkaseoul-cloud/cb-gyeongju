@@ -78,7 +78,7 @@
       if (round.status === 'ended') {
         mount(el, h('div', { class: 'qk-stage' },
           h('div', { class: 'card-black qk-over' },
-            h('div', { class: 'display-lg' }, 'TIME OVER'),
+            h('div', { class: 'display-lg' }, round.exhausted ? 'ALL CLEAR' : 'TIME OVER'),
             teamPill(ctx, round.team, '이번 라운드'),
             h('div', { class: 'qk-result-nums' },
               h('div', null, h('div', { class: 'qk-big' }, round.stats.correct), h('div', { class: 'muted' }, '정답')),
@@ -132,7 +132,17 @@
     const current = round.current && live
       ? revealCard({ image: round.current.image, word: round.current.answer, meta: `#${round.number} ${opts.showImageToAll ? '정답' : '제시어 (진행자만 보임)'}` })
       : h('div', { class: 'qk-reveal' },
-        h('div', { class: 'muted' }, round.status === 'ended' ? '라운드가 끝났어요. 새 라운드를 시작하세요.' : '시작을 누르면 첫 문제가 출제됩니다.'));
+        h('div', { class: 'muted' }, round.exhausted
+          ? '준비된 문제를 모두 출제해서 라운드를 마쳤어요.'
+          : round.status === 'ended' ? '라운드가 끝났어요. 새 라운드를 시작하세요.' : '시작을 누르면 첫 문제가 출제됩니다.'),
+        opts.progress && !opts.progress.remaining && opts.progress.total
+          ? h('div', { class: 'faint link-sm' }, '남은 문제가 없어요. 다른 테마를 고르거나 아래 "출제 기록 초기화"를 눌러 주세요.') : null);
+    const pr = opts.progress;
+    const resetPlayedBtn = pr && opts.resetPlayed && pr.remaining < pr.total
+      ? h('button', { class: 'btn btn-sm btn-ghost', title: '이미 출제된 문제를 다시 낼 수 있게 합니다', on: { click: async () => {
+        if (await Kit.confirm(`${opts.resetPlayedLabel || '이 게임'}의 출제 기록을 초기화할까요? 이미 나온 문제가 다시 출제될 수 있어요.`, { ok: '초기화' })) opts.resetPlayed();
+      } } }, '출제 기록 초기화')
+      : null;
 
     mount(root,
       h('div', { class: 'qk-admin' },
@@ -146,7 +156,8 @@
             Kit.timerEl(timer, 'qk-admin-timer')),
           h('div', { class: 'stack-sm' },
             h('div', { class: 'label' }, '이번 라운드'),
-            h('div', { class: 'row' }, h('span', { class: 'badge badge-primary' }, `정답 ${round.stats.correct}`), h('span', { class: 'badge badge-ghost' }, `패스 ${round.stats.pass}`)))),
+            h('div', { class: 'row' }, h('span', { class: 'badge badge-primary' }, `정답 ${round.stats.correct}`), h('span', { class: 'badge badge-ghost' }, `패스 ${round.stats.pass}`)),
+            pr ? h('div', { class: 'faint link-sm', title: '앞 팀이 진행한 문제는 다시 나오지 않아요' }, `남은 문제 ${pr.remaining} / ${pr.total}`) : null)),
 
         current,
 
@@ -167,6 +178,7 @@
           live ? h('button', { class: 'btn btn-sm btn-ghost', on: { click: act('adjustTime', { seconds: 10 }) } }, '+10초') : null,
           live ? h('button', { class: 'btn btn-sm btn-ghost', on: { click: act('adjustTime', { seconds: -10 }) } }, '−10초') : null,
           round.history.length ? h('button', { class: 'btn btn-sm btn-ghost', title: '마지막 정답/패스 기록을 취소합니다 (정답이었다면 1점 차감)', on: { click: act('undo') } }, '↶ 마지막 판정 취소') : null,
+          live ? null : resetPlayedBtn,
           h('div', { class: 'spacer' }),
           live ? h('button', { class: 'btn btn-sm btn-danger', on: { click: act('end') } }, '라운드 종료') : null,
           round.status === 'ended' ? h('button', { class: 'btn btn-sm btn-ghost', on: { click: act('newRound') } }, '대기 상태로') : null),

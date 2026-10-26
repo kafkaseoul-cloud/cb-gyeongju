@@ -3,7 +3,9 @@
    몸으로 말해요, 인물 퀴즈가 함께 쓴다.
 
    pub  (모두 공개)   : status, team, number, stats, timer, currentImage, lastResult, history(종료 시)
-   priv (관리자 전용) : current{id,answer,image}, used{id:true}, history[], seq
+   priv (관리자 전용) : current{id,answer,image}, history[], seq
+   played (관리자 전용): 이미 출제된 문제 {qid:true} — 라운드·팀·테마 변경과 상관없이 유지되어
+                        앞 팀이 진행한 문제가 뒤 팀에게 다시 나오지 않는다. (행사 초기화/출제 기록 초기화로만 비움)
    모든 함수는 새 상태를 돌려주고, 호출한 쪽이 DB에 한 번에 기록한다.
    ========================================================================== */
 (function () {
@@ -35,8 +37,8 @@
 
   function initial(duration) {
     return {
-      pub: { status: 'ready', team: 'A', number: 0, stats: { correct: 0, pass: 0 }, timer: Timer.create(duration), currentImage: null, currentAnswer: null, lastResult: null, history: null },
-      priv: { current: null, used: {}, history: [], seq: 0 },
+      pub: { status: 'ready', team: 'A', number: 0, stats: { correct: 0, pass: 0 }, timer: Timer.create(duration), currentImage: null, currentAnswer: null, lastResult: null, history: null, exhausted: false },
+      priv: { current: null, history: [], seq: 0 },
     };
   }
 
@@ -47,25 +49,27 @@
     p.stats = { correct: 0, pass: 0, ...(p.stats || {}) };
     p.timer = { ...base.pub.timer, ...(p.timer || {}) };
     const q = { ...base.priv, ...(priv || {}) };
-    q.used = q.used || {};
     q.history = arr(q.history);
     return { pub: p, priv: q };
   }
 
-  function draw(r, pool, revealImage, revealAnswer) {
-    if (!pool.length) { r.priv.current = null; r.pub.currentImage = null; r.pub.currentAnswer = null; return; }
-    let cands = pool.filter((q) => !r.priv.used[q.id]);
+  /** 아직 출제되지 않은 문제 목록 */
+  const remainingOf = (pool, played) => pool.filter((q) => !(played && played[q.id]));
+
+  /** 다음 문제 뽑기. 남은 문제가 없으면 false (같은 문제를 다시 내지 않는다) */
+  function draw(r, pool, played, revealImage, revealAnswer) {
+    const cands = remainingOf(pool, played);
     if (!cands.length) {
-      r.priv.used = {};
-      cands = pool.filter((q) => !r.priv.current || q.id !== r.priv.current.id);
-      if (!cands.length) cands = pool;
+      r.priv.current = null; r.pub.currentImage = null; r.pub.currentAnswer = null;
+      return false;
     }
     const q = cands[Math.floor(Math.random() * cands.length)];
-    r.priv.used[q.id] = true;
+    played[q.id] = true; // 화면에 나간 순간 '출제됨' (정답이 공개되므로 남은 시간에 뜬 문제도 포함)
     r.priv.current = { id: q.id, answer: q.answer, image: q.image || null };
     r.pub.number += 1;
     r.pub.currentImage = revealImage ? (q.image || null) : null;
     r.pub.currentAnswer = revealAnswer ? q.answer : null;
+    return true;
   }
 
   const stats = (history) => ({
@@ -75,10 +79,12 @@
 
   /**
    * 명령 실행
-   * @returns {{pub, priv, score: null | {team, delta}}}
+   * @param {object} opts.played  이미 출제된 문제 {qid:true} (admin/played/<게임>/<테마>)
+   * @returns {{pub, priv, played, score: null | {team, delta}}}
    */
-  function apply(type, payload, state, { pool, now, revealImage, revealAnswer = false }) {
+  function apply(type, payload, state, { pool, now, revealImage, revealAnswer = false, played = {} }) {
     const r = { pub: clone(state.pub), priv: clone(state.priv) };
+    played = { ...(played || {}) };
     let score = null;
     const p = r.pub;
 
@@ -87,7 +93,8 @@
         if (p.status === 'ended') Object.assign(r, reset(r));
         if (r.pub.status !== 'ready') break;
         if (!pool.length) throw new Error('등록된 문제가 없습니다. 콘텐츠 관리에서 문제를 추가하세요.');
-        draw(r, pool, revealImage, revealAnswer);
+        if (!remainingOf(pool, played).length) throw new Error('이 테마의 문제를 모두 출제했어요. 다른 테마를 고르거나 "출제 기록 초기화"를 눌러 주세요.');
+        draw(r, pool, played, revealImage, revealAnswer);
         r.pub.status = 'playing';
         r.pub.timer = Timer.start(r.pub.timer, now);
         break;
@@ -108,7 +115,10 @@
         r.priv.seq = (r.priv.seq || 0) + 1;
         p.lastResult = { type, answer: done.answer, team: p.team, seq: r.priv.seq, at: now };
         if (type === 'correct') score = { team: p.team, delta: 1 };
-        draw(r, pool, revealImage, revealAnswer);
+        if (!draw(r, pool, played, revealImage, revealAnswer)) {
+          // 남은 문제가 없으면 반복 출제하지 않고 라운드를 끝낸다
+          p.timer = Timer.end(p.timer); p.status = 'ended'; p.exhausted = true;
+        }
         break;
       }
       case 'undo': {
@@ -146,12 +156,13 @@
     r.pub.history = r.pub.status === 'ended' ? r.priv.history.map(({ answer, result, team }) => ({ answer, result, team })) : null;
     if (!LIVE.includes(r.pub.status)) { r.pub.currentImage = null; r.pub.currentAnswer = null; }
     if (r.pub.currentAnswer === undefined) r.pub.currentAnswer = null;
-    return { pub: r.pub, priv: r.priv, score };
+    delete r.priv.used; // 이전 버전의 라운드별 기록 (played로 대체)
+    return { pub: r.pub, priv: r.priv, played, score };
   }
 
   function reset(r) {
     return {
-      pub: { ...r.pub, status: 'ready', number: 0, timer: Timer.reset(r.pub.timer), currentImage: null, currentAnswer: null, history: null },
+      pub: { ...r.pub, status: 'ready', number: 0, timer: Timer.reset(r.pub.timer), currentImage: null, currentAnswer: null, history: null, exhausted: false },
       priv: { ...r.priv, current: null, history: [] },
     };
   }
@@ -161,5 +172,8 @@
     return { ...pub, current: LIVE.includes(pub.status) ? priv.current : null, history: priv.history };
   }
 
-  window.QuizEngine = { Timer, initial, normalize, apply, adminView };
+  /** 남은 문제 수 / 전체 문제 수 */
+  const progress = (pool, played) => ({ remaining: remainingOf(pool, played).length, total: pool.length });
+
+  window.QuizEngine = { Timer, initial, normalize, apply, adminView, progress };
 })();

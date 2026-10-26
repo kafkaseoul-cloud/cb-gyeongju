@@ -135,11 +135,12 @@ import { boot, GAMES, buildState, chatList, defaultJoinUrl, DEFAULT_PUBLIC } fro
       content: pick(adm.content) || null,
       settings: pick(adm.settings) || {},
       priv: pick(adm.rounds) || null,
+      played: pick(adm.played) || {}, // 이미 출제된 문제 (테마별) — 라운드·팀이 바뀌어도 유지
       seeded: !!pick(adm.seeded),
       now: B.now(),
       P: {
         pub: `public/games/${gid}`, content: `admin/content/${gid}`, settings: `admin/settings/${gid}`,
-        priv: `admin/rounds/${gid}`, seeded: `admin/seeded/${gid}`,
+        priv: `admin/rounds/${gid}`, seeded: `admin/seeded/${gid}`, played: `admin/played/${gid}`,
       },
       score(team, delta) {
         const cur = (S.state ? S.state.teams[team].score : 0) || 0;
@@ -234,7 +235,7 @@ import { boot, GAMES, buildState, chatList, defaultJoinUrl, DEFAULT_PUBLIC } fro
     async resetEvent() {
       // 보안 규칙상 players 전체를 한 번에 지울 수 없어 참가자별로 삭제한다 (한 번에 지우면 초기화 전체가 거부됨)
       const map = { chat: null, 'public/phase': 'lobby', 'public/currentGameId': null,
-        'public/teams/A/score': 0, 'public/teams/B/score': 0, 'public/games': null, 'admin/rounds': null };
+        'public/teams/A/score': 0, 'public/teams/B/score': 0, 'public/games': null, 'admin/rounds': null, 'admin/played': null };
       Object.keys(S.raw.players || {}).forEach((uid) => { map[`players/${uid}`] = null; });
       return map;
     },
@@ -509,7 +510,7 @@ import { boot, GAMES, buildState, chatList, defaultJoinUrl, DEFAULT_PUBLIC } fro
             title, h('button', { class: 'btn btn-primary', type: 'submit' }, '저장'))),
         h('div', { class: 'card stack' },
           h('h3', { class: 'heading-sm' }, '새 행사 시작'),
-          h('p', { class: 'muted', style: { margin: 0 } }, '참가자 명단 · 채팅 · 점수 · 진행 상태를 비웁니다. 문제와 게임 설정은 그대로 남아요.'),
+          h('p', { class: 'muted', style: { margin: 0 } }, '참가자 명단 · 채팅 · 점수 · 진행 상태 · 출제 기록을 비웁니다. 문제와 게임 설정은 그대로 남아요.'),
           h('button', { class: 'btn btn-danger', style: { justifySelf: 'start' }, on: { click: async () => {
             if (await Kit.confirm('정말 새 행사를 시작할까요? 참가자 명단과 점수가 모두 지워집니다.', { ok: '초기화', danger: true })) {
               if (await action('resetEvent')) Kit.toast('초기화했어요.');
