@@ -47,7 +47,7 @@
       return this.action('pause', {}, ctx);
     },
 
-    controlKey: (ctx) => [ctx.pub, ctx.priv, duration(ctx), questionsOf(ctx).length],
+    controlKey: (ctx) => [ctx.pub, ctx.priv, duration(ctx), questionsOf(ctx).length, ctx.played],
 
     action(type, payload, ctx) {
       const P = ctx.P;
@@ -83,11 +83,18 @@
           });
           return map;
         }
+        case 'resetPlayed':
+          return { [`${P.played}/all`]: null };
         default: {
           const res = E.apply(type === 'setDurationRound' ? 'setDuration' : type, payload, roundOf(ctx), {
             pool: questionsOf(ctx), now: ctx.now, revealImage: true,
+            played: (ctx.played || {}).all || {}, // 앞 팀이 진행한 인물은 다시 나오지 않도록
           });
-          return { [`${P.pub}/round`]: res.pub, [P.priv]: res.priv, ...(res.score ? ctx.score(res.score.team, res.score.delta) : {}) };
+          return {
+            [`${P.pub}/round`]: res.pub, [P.priv]: res.priv,
+            [`${P.played}/all`]: Object.keys(res.played).length ? res.played : null,
+            ...(res.score ? ctx.score(res.score.team, res.score.delta) : {}),
+          };
         }
       }
     },
@@ -104,7 +111,13 @@
           h('span', { class: 'faint link-sm' }, '사진은 참가자 화면에 크게 표시되고, 이름(정답)은 정답/패스 처리 후 공개됩니다.')),
         qs.length ? null : h('div', { class: 'empty' }, '등록된 문제가 없어요. 콘텐츠 관리 → 인물 퀴즈에서 사진과 정답을 추가하세요.'),
         panel));
-      QuizKit.renderAdminControl(panel, E.adminView(r.pub, r.priv), api, { showImageToAll: true, imageOf: (x) => images[x.qid] });
+      QuizKit.renderAdminControl(panel, E.adminView(r.pub, r.priv), api, {
+        showImageToAll: true,
+        imageOf: (x) => images[x.qid],
+        progress: E.progress(qs, (ctx.played || {}).all),
+        resetPlayed: () => api.act('resetPlayed'),
+        resetPlayedLabel: '인물 퀴즈',
+      });
     },
 
     content(root, ctx, api) {
