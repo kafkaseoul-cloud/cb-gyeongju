@@ -22,3 +22,6 @@
 .bt-tabs { display: flex; gap: 6px; flex-wrap: wrap; }
 .bt-tab { border: 1px solid var(--hairline); cursor: pointer; padding: 7px 14px; border-radius: 9999px; background: transparent; color: var(--ink-dim); font-weight: 600; font-size: 14px; }
 .bt-tab.on { background: var(--primary); border-color: var(--primary); color: #fff; }
+
+/* 모든 문제가 출제된 테마 */
+.bt-admin-theme.is-done { opacity: 0.5; }

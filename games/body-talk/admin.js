@@ -62,7 +62,7 @@
       return this.action('pause', {}, ctx);
     },
 
-    controlKey: (ctx) => [ctx.pub, ctx.priv, duration(ctx)],
+    controlKey: (ctx) => [ctx.pub, ctx.priv, duration(ctx), ctx.played],
 
     action(type, payload, ctx) {
       const P = ctx.P;
@@ -74,6 +74,9 @@
         }
         case 'backToThemes':
           return { [`${P.pub}/theme`]: null, [`${P.pub}/round`]: null, [P.priv]: null };
+        case 'resetPlayed':
+          // 이 테마의 출제 기록을 비워 처음부터 다시 낼 수 있게 한다
+          return { [`${P.played}/${payload.themeId}`]: null };
         case 'setDuration': {
           const s = Math.max(10, Math.min(1800, Math.round(Number(payload.seconds) || 0)));
           const map = { [`${P.settings}/duration`]: s };
@@ -94,7 +97,7 @@
         }
         case 'deleteTheme': {
           findTheme(ctx, payload.themeId);
-          const map = { [`${P.content}/themes/${payload.themeId}`]: null };
+          const map = { [`${P.content}/themes/${payload.themeId}`]: null, [`${P.played}/${payload.themeId}`]: null };
           if ((pub(ctx).theme || {}).id === payload.themeId) Object.assign(map, this.action('backToThemes', {}, ctx));
           return map;
         }
@@ -135,8 +138,13 @@
           const pool = themesOf(ctx).find((t) => t.id === theme.id);
           const res = E.apply(type === 'setDurationRound' ? 'setDuration' : type, payload, roundOf(ctx), {
             pool: pool ? pool.questions : [], now: ctx.now, revealImage: true, revealAnswer: true,
+            played: (ctx.played || {})[theme.id] || {}, // 앞 팀이 진행한 문제는 다시 나오지 않도록
           });
-          return { [`${P.pub}/round`]: res.pub, [P.priv]: res.priv, ...(res.score ? ctx.score(res.score.team, res.score.delta) : {}) };
+          return {
+            [`${P.pub}/round`]: res.pub, [P.priv]: res.priv,
+            [`${P.played}/${theme.id}`]: Object.keys(res.played).length ? res.played : null,
+            ...(res.score ? ctx.score(res.score.team, res.score.delta) : {}),
+          };
         }
       }
     },
@@ -148,11 +156,13 @@
       if (!p.theme || !p.round) {
         mount(root, h('div', { class: 'stack' },
           h('div', { class: 'label' }, '테마를 선택하세요'),
-          themes.length ? h('div', { class: 'bt-admin-themes' }, themes.map((t) =>
-            h('button', { class: 'bt-admin-theme', on: { click: () => api.act('selectTheme', { themeId: t.id }) } },
+          themes.length ? h('div', { class: 'bt-admin-themes' }, themes.map((t) => {
+            const pr = E.progress(t.questions, (ctx.played || {})[t.id]);
+            return h('button', { class: `bt-admin-theme ${pr.remaining ? '' : 'is-done'}`, on: { click: () => api.act('selectTheme', { themeId: t.id }) } },
               h('span', { class: 'bt-theme-icon' }, t.icon),
               h('strong', { class: 'heading-sm' }, t.name),
-              h('span', { class: 'faint link-sm' }, `${t.questions.length}문제`))))
+              h('span', { class: 'faint link-sm' }, pr.remaining === pr.total ? `${pr.total}문제` : pr.remaining ? `남은 문제 ${pr.remaining} / ${pr.total}` : `모두 출제됨 · ${pr.total}문제`));
+          }))
             : h('div', { class: 'empty' }, '테마가 없어요. 콘텐츠 관리에서 추가하세요.')));
         return;
       }
@@ -168,7 +178,13 @@
           h('div', { class: 'spacer' }),
           h('button', { class: 'btn btn-sm btn-ghost', on: { click: () => api.act('backToThemes') } }, '테마 변경')),
         panel));
-      QuizKit.renderAdminControl(panel, E.adminView(r.pub, r.priv), api, { showImageToAll: true, imageOf: (x) => images[x.qid] });
+      QuizKit.renderAdminControl(panel, E.adminView(r.pub, r.priv), api, {
+        showImageToAll: true,
+        imageOf: (x) => images[x.qid],
+        progress: E.progress(theme ? theme.questions : [], (ctx.played || {})[p.theme.id]),
+        resetPlayed: () => api.act('resetPlayed', { themeId: p.theme.id }),
+        resetPlayedLabel: `'${p.theme.name}' 테마`,
+      });
     },
 
     /** 콘텐츠 관리: 게임 시간 + 테마별 문제 */
