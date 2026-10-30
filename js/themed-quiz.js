@@ -16,28 +16,38 @@
 
   const EMOJIS = ['🎬', '📺', '🍪', '🎤', '🎵', '⚽', '🍜', '🐶', '🌏', '🎮', '📚', '🚗', '👑', '🎲', '💡', '🔥'];
 
-  /** 테마 이름 + 이모지 편집 모달 → { name, icon } | null */
+  /** "🍿 시네마" 처럼 한 줄로 쓴 제목을 { icon, name }으로 나눈다. 앞에 이모지가 없으면 icon은 '' */
+  function splitTitle(text) {
+    const s = String(text || '').trim().replace(/\s+/g, ' ');
+    const m = s.match(/^([^\p{L}\p{N}\s]+)\s*(.*)$/u);
+    if (m && m[2] && /\p{Extended_Pictographic}/u.test(m[1])) return { icon: m[1].slice(0, 8), name: m[2].slice(0, 20) };
+    return { icon: '', name: s.slice(0, 20) };
+  }
+  /** 화면 표시용 제목 */
+  const titleOf = (t) => (t ? [t.icon, t.name].filter(Boolean).join(' ') : '');
+
+  /** 테마 제목 편집 모달 (이모지 + 이름을 한 칸에) → { icon, name } | null */
   function editThemeModal(theme) {
     return new Promise((resolve) => {
-      const icon = h('input', { class: 'input', value: theme.icon || '🎲', maxlength: 8, 'aria-label': '이모지' });
-      const name = h('input', { class: 'input', value: theme.name || '', maxlength: 20, placeholder: '테마 이름', 'aria-label': '테마 이름' });
+      const input = h('input', { class: 'input theme-title-input', value: titleOf(theme), maxlength: 30, placeholder: '예: 🍿 시네마', 'aria-label': '테마 제목' });
       const close = (v) => { bd.remove(); resolve(v); };
       const save = () => {
-        const n = name.value.trim();
-        if (!n) { Kit.toast('테마 이름을 입력하세요.', 'error'); name.focus(); return; }
-        close({ name: n, icon: icon.value.trim() || '🎲' });
+        const v = splitTitle(input.value);
+        if (!v.name) { Kit.toast('테마 제목을 입력하세요.', 'error'); input.focus(); return; }
+        close(v);
       };
+      const pick = (e) => { input.value = `${e} ${splitTitle(input.value).name}`.trim(); input.focus(); };
       const bd = h('div', { class: 'modal-backdrop', on: { click: (e) => { if (e.target === bd) close(null); } } },
         h('form', { class: 'modal stack', on: { submit: (e) => { e.preventDefault(); save(); } } },
-          h('h3', { class: 'heading-sm' }, '테마 편집'),
-          h('div', { class: 'theme-edit-row' }, icon, name),
-          h('div', { class: 'faint link-sm' }, '이모지는 직접 입력하거나 아래에서 고르세요 (윈도우: Win + . / 맥: Ctrl + Cmd + Space)'),
-          h('div', { class: 'emoji-picks' }, EMOJIS.map((e) => h('button', { type: 'button', on: { click: () => { icon.value = e; } } }, e))),
+          h('h3', { class: 'heading-sm' }, '테마 제목'),
+          input,
+          h('div', { class: 'faint link-sm' }, '이모지와 이름을 자유롭게 입력하세요. 아래 이모지를 누르면 맨 앞 이모지가 바뀌어요.'),
+          h('div', { class: 'emoji-picks' }, EMOJIS.map((e) => h('button', { type: 'button', on: { click: () => pick(e) } }, e))),
           h('div', { class: 'row', style: { justifyContent: 'flex-end' } },
             h('button', { type: 'button', class: 'btn btn-ghost', on: { click: () => close(null) } }, '취소'),
             h('button', { type: 'submit', class: 'btn btn-primary' }, '저장'))));
       document.body.appendChild(bd);
-      setTimeout(() => name.focus(), 30);
+      setTimeout(() => { input.focus(); input.select(); }, 30);
     });
   }
 
@@ -59,7 +69,7 @@
     function themesOf(ctx) {
       const themes = ((ctx.content || {}).themes) || {};
       return Object.entries(themes).map(([id, t]) => ({
-        id, name: t.name, icon: t.icon || '🎲', order: t.order || 0,
+        id, name: t.name, icon: t.icon || '', order: t.order || 0,
         questions: Object.entries(t.questions || {}).map(([qid, q]) => ({ id: qid, answer: q.answer, image: q.image || null, order: q.order || 0 })).sort(byOrder),
       })).sort(byOrder);
     }
@@ -134,17 +144,18 @@
           }
           // ── 콘텐츠 ──
           case 'addTheme': {
-            const name = String(payload.name || '').trim().slice(0, 20);
-            if (!name) throw new Error('테마 이름을 입력하세요.');
+            const { icon, name } = payload.title !== undefined ? splitTitle(payload.title) : { icon: String(payload.icon || '').trim().slice(0, 8), name: String(payload.name || '').trim().slice(0, 20) };
+            if (!name) throw new Error('테마 제목을 입력하세요.');
             const order = themesOf(ctx).length;
-            return { [`${P.content}/themes/${newKey()}`]: { name, icon: String(payload.icon || '🎲').trim().slice(0, 8) || '🎲', order } };
+            return { [`${P.content}/themes/${newKey()}`]: { name, icon, order } };
           }
           case 'renameTheme': {
             findTheme(ctx, payload.themeId);
             const map = {};
-            const name = String(payload.name || '').trim().slice(0, 20);
-            if (name) map[`${P.content}/themes/${payload.themeId}/name`] = name;
-            if (payload.icon !== undefined) map[`${P.content}/themes/${payload.themeId}/icon`] = String(payload.icon).trim().slice(0, 8) || '🎲';
+            const v = payload.title !== undefined ? splitTitle(payload.title) : { name: String(payload.name || '').trim().slice(0, 20), icon: payload.icon };
+            if (!v.name) throw new Error('테마 제목을 입력하세요.');
+            map[`${P.content}/themes/${payload.themeId}/name`] = v.name;
+            if (v.icon !== undefined) map[`${P.content}/themes/${payload.themeId}/icon`] = String(v.icon).trim().slice(0, 8);
             return map;
           }
           case 'deleteTheme': {
@@ -212,7 +223,7 @@
             themes.length ? h('div', { class: 'bt-admin-themes' }, themes.map((t) => {
               const pr = E.progress(t.questions, (ctx.played || {})[t.id]);
               return h('button', { class: `bt-admin-theme ${pr.remaining ? '' : 'is-done'}`, on: { click: () => api.act('selectTheme', { themeId: t.id }) } },
-                h('span', { class: 'bt-theme-icon' }, t.icon),
+                t.icon ? h('span', { class: 'bt-theme-icon' }, t.icon) : null,
                 h('strong', { class: 'heading-sm' }, t.name),
                 h('span', { class: 'faint link-sm' }, pr.remaining === pr.total ? `${pr.total}문제` : pr.remaining ? `남은 문제 ${pr.remaining} / ${pr.total}` : `모두 출제됨 · ${pr.total}문제`));
             }))
@@ -226,7 +237,7 @@
         const panel = h('div');
         mount(root, h('div', { class: 'stack' },
           h('div', { class: 'row row-wrap' },
-            h('span', { class: 'badge', style: { fontSize: '15px', padding: '6px 14px' } }, `${p.theme.icon} ${p.theme.name}`),
+            h('span', { class: 'badge', style: { fontSize: '15px', padding: '6px 14px' } }, titleOf(p.theme)),
             cfg.note ? h('span', { class: 'faint link-sm' }, cfg.note) : null,
             h('div', { class: 'spacer' }),
             h('button', { class: 'btn btn-sm btn-ghost', on: { click: () => api.act('backToThemes') } }, '테마 변경')),
@@ -246,8 +257,7 @@
         const themes = themesOf(ctx);
         if (!contentTab || !themes.find((t) => t.id === contentTab)) contentTab = themes[0] && themes[0].id;
         const theme = themes.find((t) => t.id === contentTab);
-        const newName = h('input', { class: 'input', placeholder: '새 테마 이름', maxlength: 20, style: { maxWidth: '220px' } });
-        const newIcon = h('input', { class: 'input', placeholder: '🎲', maxlength: 8, style: { width: '72px', textAlign: 'center' } });
+        const newTitle = h('input', { class: 'input', placeholder: '새 테마 (예: 🍿 시네마)', maxlength: 30, style: { maxWidth: '260px' } });
 
         const allQuestions = [];
         themes.forEach((t) => t.questions.forEach((q) => allQuestions.push({ ...q, themeId: t.id, themeName: t.name })));
@@ -271,18 +281,18 @@
           h('div', { class: 'card stack' },
             h('h3', { class: 'heading-sm' }, '🎭 테마 & 문제'),
             h('div', { class: 'bt-tabs' }, themes.map((t) =>
-              h('button', { class: `bt-tab ${t.id === contentTab ? 'on' : ''}`, on: { click: () => { contentTab = t.id; api.rerender(); } } }, `${t.icon} ${t.name} · ${t.questions.length}`))),
+              h('button', { class: `bt-tab ${t.id === contentTab ? 'on' : ''}`, on: { click: () => { contentTab = t.id; api.rerender(); } } }, `${titleOf(t)} · ${t.questions.length}`))),
             h('form', { class: 'row row-wrap', on: { submit: async (e) => {
               e.preventDefault();
-              if (await api.act('addTheme', { name: newName.value, icon: newIcon.value || '🎲' })) Kit.toast('테마를 추가했어요.');
-            } } }, newIcon, newName, h('button', { class: 'btn btn-ghost', type: 'submit' }, '+ 테마 추가')),
+              if (await api.act('addTheme', { title: newTitle.value })) Kit.toast('테마를 추가했어요.');
+            } } }, newTitle, h('button', { class: 'btn btn-ghost', type: 'submit' }, '+ 테마 추가')),
             theme ? h('div', { class: 'stack' },
               h('div', { class: 'row' },
-                h('h4', { class: 'heading-sm grow' }, `${theme.icon} ${theme.name}`),
+                h('h4', { class: 'heading-sm grow' }, titleOf(theme)),
                 h('button', { class: 'btn btn-sm btn-ghost', on: { click: async () => {
                   const v = await editThemeModal(theme);
                   if (v && await api.act('renameTheme', { themeId: theme.id, name: v.name, icon: v.icon })) Kit.toast('테마를 수정했어요.');
-                } } }, '이름 · 이모지 변경'),
+                } } }, '제목 변경'),
                 h('button', { class: 'btn btn-sm btn-danger', on: { click: async () => {
                   if (await Kit.confirm(`"${theme.name}" 테마와 문제 ${theme.questions.length}개를 모두 삭제할까요?`, { ok: '삭제', danger: true })) api.act('deleteTheme', { themeId: theme.id });
                 } } }, '테마 삭제')),
@@ -292,5 +302,5 @@
     };
   }
 
-  window.ThemedQuiz = { create, editThemeModal };
+  window.ThemedQuiz = { create, editThemeModal, splitTitle, titleOf };
 })();
