@@ -14,8 +14,6 @@
   const { h, mount } = Kit;
   const E = QuizEngine;
 
-  const EMOJIS = ['🎬', '📺', '🍪', '🎤', '🎵', '⚽', '🍜', '🐶', '🌏', '🎮', '📚', '🚗', '👑', '🎲', '💡', '🔥'];
-
   /** "🍿 시네마" 처럼 한 줄로 쓴 제목을 { icon, name }으로 나눈다. 앞에 이모지가 없으면 icon은 '' */
   function splitTitle(text) {
     const s = String(text || '').trim().replace(/\s+/g, ' ');
@@ -36,13 +34,11 @@
         if (!v.name) { Kit.toast('테마 제목을 입력하세요.', 'error'); input.focus(); return; }
         close(v);
       };
-      const pick = (e) => { input.value = `${e} ${splitTitle(input.value).name}`.trim(); input.focus(); };
       const bd = h('div', { class: 'modal-backdrop', on: { click: (e) => { if (e.target === bd) close(null); } } },
         h('form', { class: 'modal stack', on: { submit: (e) => { e.preventDefault(); save(); } } },
           h('h3', { class: 'heading-sm' }, '테마 제목'),
           input,
-          h('div', { class: 'faint link-sm' }, '이모지와 이름을 자유롭게 입력하세요. 아래 이모지를 누르면 맨 앞 이모지가 바뀌어요.'),
-          h('div', { class: 'emoji-picks' }, EMOJIS.map((e) => h('button', { type: 'button', on: { click: () => pick(e) } }, e))),
+          h('div', { class: 'faint link-sm' }, '이모지와 이름을 자유롭게 입력하세요. (이모지 입력: 윈도우 Win + . / 맥 Ctrl + Cmd + Space)'),
           h('div', { class: 'row', style: { justifyContent: 'flex-end' } },
             h('button', { type: 'button', class: 'btn btn-ghost', on: { click: () => close(null) } }, '취소'),
             h('button', { type: 'submit', class: 'btn btn-primary' }, '저장'))));
