@@ -16,7 +16,7 @@
               h('p', { class: 'muted body-lg' }, '진행자가 테마를 고르고 있어요')),
             h('div', { class: 'bt-theme-grid' }, themes.map((t, i) =>
               h('div', { class: 'bt-theme', style: { animationDelay: `${i * 70}ms` } },
-                h('div', { class: 'bt-theme-icon' }, t.icon),
+                t.icon ? h('div', { class: 'bt-theme-icon' }, t.icon) : null,
                 h('div', { class: 'heading-sm' }, t.name),
                 h('div', { class: 'faint link-sm' }, `${t.count}문제`)))))));
         return;
@@ -25,7 +25,7 @@
       QuizKit.renderPlayer(root, game.round, ctx, {
         key: 'chosung',
         mode: 'hint',
-        subtitle: `${game.theme.icon} ${game.theme.name}`,
+        subtitle: [game.theme.icon, game.theme.name].filter(Boolean).join(' '),
       });
     },
   };
