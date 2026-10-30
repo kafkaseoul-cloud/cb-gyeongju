@@ -78,7 +78,4 @@
 
 /* 테마 편집 모달 */
 .theme-title-input { font-size: 20px; }
-.emoji-picks { display: flex; flex-wrap: wrap; gap: 6px; }
-.emoji-picks button { width: 40px; height: 40px; border-radius: 10px; border: 1px solid var(--hairline); background: var(--surface-2); font-size: 22px; cursor: pointer; }
-.emoji-picks button:hover { border-color: var(--primary); }
 .seg.seg-wrap { flex-wrap: wrap; }
