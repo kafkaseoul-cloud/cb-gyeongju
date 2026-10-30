@@ -1,5 +1,6 @@
 [
-  { "id": "body-talk", "name": "몸으로 말해요", "icon": "🙆", "color": "magenta", "description": "제시어를 몸으로만 표현! 말하면 반칙" },
-  { "id": "person-quiz", "name": "인물 퀴즈", "icon": "🕵️", "color": "primary", "description": "사진 속 인물은 누구일까?" },
-  { "id": "zombie", "name": "좀비 게임", "icon": "🧟", "color": "onyx", "description": "제한 시간 동안 살아남아라" }
+  {"id": "body-talk", "name": "몸으로 말해요", "icon": "🙆", "color": "magenta", "description": "제시어를 몸으로만 표현! 말하면 반칙"},
+  {"id": "person-quiz", "name": "인물 퀴즈", "icon": "🕵️", "color": "primary", "description": "사진 속 인물은 누구일까?"},
+  {"id": "chosung", "name": "초성 퀴즈", "icon": "🔤", "color": "primary", "description": "초성만 보고 정답을 맞혀라"},
+  {"id": "zombie", "name": "좀비 게임", "icon": "🧟", "color": "onyx", "description": "제한 시간 동안 살아남아라"}
 ]
