@@ -47,20 +47,25 @@ function showSetupNeeded(role, detail) {
 /** DB의 public / players / status 를 화면이 쓰는 하나의 상태로 합친다 */
 export function buildState({ pub, players, status }) {
   const p = { ...DEFAULT_PUBLIC, ...(pub || {}) };
-  const teams = {
-    A: { ...DEFAULT_PUBLIC.teams.A, ...((p.teams || {}).A || {}) },
-    B: { ...DEFAULT_PUBLIC.teams.B, ...((p.teams || {}).B || {}) },
-  };
+  // 팀: 처음(public 없음)엔 A/B 기본값, 이후엔 관리자가 추가·삭제한 그대로 (0팀 = 개인전만)
+  const teams = {};
+  Kit.teamList(pub ? (pub.teams || {}) : DEFAULT_PUBLIC.teams).forEach((t) => { teams[t.id] = { name: t.name, score: t.score }; });
+  const pscores = p.pscores || {}; // 개인 점수 public/pscores/<uid>
   const online = status || {};
   const list = Object.entries(players || {})
     .filter(([, v]) => v && v.nickname)
-    .map(([id, v]) => ({ id, nickname: v.nickname, avatar: v.avatar || null, team: v.team || null, online: !!online[id], joinedAt: v.joinedAt || 0 }))
+    .map(([id, v]) => ({
+      id, nickname: v.nickname, avatar: v.avatar || null,
+      team: v.team && teams[v.team] ? v.team : null, // 삭제된 팀은 미배정으로
+      online: !!online[id], joinedAt: v.joinedAt || 0, score: Number(pscores[id]) || 0,
+    }))
     .sort((a, b) => a.joinedAt - b.joinedAt);
   const gid = p.phase === 'game' ? p.currentGameId : null;
   return {
     title: p.title,
     phase: p.phase,
     teams,
+    teamList: Kit.teamList(teams),
     players: list,
     games: GAMES,
     currentGameId: gid,

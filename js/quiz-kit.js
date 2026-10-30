@@ -10,18 +10,20 @@
 
   // 정답/패스 순간 효과 (같은 결과를 두 번 띄우지 않도록 seq 기억)
   const seen = {};
-  function flashResult(key, last, { revealAnswer = true } = {}) {
+  function flashResult(key, last, { revealAnswer = true, meId = null } = {}) {
     if (!last) { if (seen[key] === undefined) seen[key] = null; return; }
     const id = `${last.seq}:${last.at}`;
     if (seen[key] === undefined) { seen[key] = id; return; } // 화면을 막 연 경우: 지난 결과는 띄우지 않음
     if (seen[key] === id) return;
     seen[key] = id;
     if (Kit.now() - last.at > 4000) return;
+    const mine = last.playerId && last.playerId === meId;
+    const who = last.type === 'correct' && last.nickname ? (mine ? '내가 맞혔어요! +1' : `${last.nickname} +1`) : null;
     Kit.flash({
       kind: last.type === 'correct' ? 'correct' : 'pass',
-      title: last.type === 'correct' ? '정답!' : '패스',
-      sub: revealAnswer ? last.answer : null,
-      ms: 1600,
+      title: last.type === 'correct' ? (mine ? '정답! 🎉' : '정답!') : '패스',
+      sub: [revealAnswer ? last.answer : null, who].filter(Boolean).join(' · ') || null,
+      ms: mine ? 2200 : 1600,
     });
   }
 
@@ -33,8 +35,19 @@
       h('div', { class: 'qk-reveal-word' }, word));
   }
 
-  function teamPill(ctx, team, label = '도전 팀') {
-    return h('div', { class: `qk-team team-${team.toLowerCase()}` }, h('span', { class: 'qk-team-label' }, label), h('strong', null, ctx.teamName(team)));
+  function teamPill(ctx, team, label = '도전 팀', round = null) {
+    if (round && round.mode === 'solo') {
+      return h('div', { class: 'qk-team solo' }, h('span', { class: 'qk-team-label' }, '개인전'), h('strong', null, '먼저 맞히면 +1'));
+    }
+    if (!team) return h('div', { class: 'qk-team' }, h('span', { class: 'qk-team-label' }, label), h('strong', null, '—'));
+    return h('div', { class: 'qk-team tc', style: Kit.tcStyle(team) }, h('span', { class: 'qk-team-label' }, label), h('strong', null, ctx.teamName(team)));
+  }
+
+  /** 초성 힌트 카드 */
+  function hintCard(hint, meta) {
+    return h('div', { class: 'qk-hint' },
+      meta ? h('div', { class: 'qk-hint-meta' }, meta) : null,
+      h('div', { class: 'qk-hint-text' }, hint || '?'));
   }
 
   function historyList(history, { showImage = false, imageOf = null } = {}) {
@@ -45,7 +58,7 @@
       return h('li', { class: `qk-hist ${x.result}` },
       h('span', { class: 'qk-hist-no' }, i + 1),
       showImage ? (img ? h('img', { class: 'thumb', src: img, alt: '' }) : h('div', { class: 'thumb thumb-empty' }, '?')) : null,
-      h('span', { class: 'grow ellipsis qk-hist-answer' }, x.answer),
+      h('span', { class: 'grow ellipsis qk-hist-answer' }, x.answer, x.nickname ? h('span', { class: 'faint link-sm' }, ` · ${x.nickname}`) : null),
       h('span', { class: `badge ${x.result === 'correct' ? 'badge-primary' : 'badge-ghost'}` }, x.result === 'correct' ? '정답' : '패스'));
     }));
   }
@@ -58,19 +71,20 @@
    * @param {object} opts    { key, mode: 'act' | 'image', subtitle, actHint }
    */
   function renderPlayer(root, round, ctx, opts) {
-    flashResult(opts.key, round.lastResult, { revealAnswer: true });
+    flashResult(opts.key, round.lastResult, { revealAnswer: true, meId: ctx.me && ctx.me.id });
     const { timer, ...rest } = round;
     keyed(root, [rest, timer.running, timer.endsAt, timer.remainingMs, opts.subtitle, ctx.state.teams], (el) => {
       const myTeam = ctx.me && ctx.me.team;
-      const playingMine = myTeam && myTeam === round.team;
+      const solo = round.mode === 'solo';
+      const playingMine = solo || (myTeam && myTeam === round.team);
 
       if (round.status === 'ready') {
         mount(el, h('div', { class: 'qk-stage qk-ready' },
           h('div', { class: 'card-gradient qk-ready-card' },
             h('div', { class: 'eyebrow', style: { color: 'rgba(255,255,255,.85)' } }, opts.subtitle || 'READY'),
             h('div', { class: 'display-lg' }, 'READY?'),
-            teamPill(ctx, round.team),
-            h('p', { class: 'body-lg', style: { margin: 0 } }, playingMine ? '우리 팀 차례! 준비하세요 🔥' : '곧 시작합니다'),
+            teamPill(ctx, round.team, '도전 팀', round),
+            h('p', { class: 'body-lg', style: { margin: 0 } }, solo ? '정답을 외친 사람에게 점수가 들어가요 🔥' : playingMine ? '우리 팀 차례! 준비하세요 🔥' : '곧 시작합니다'),
             h('div', { class: 'qk-ready-time' }, '제한 시간 ', h('strong', null, Kit.fmt(timer.duration * 1000))))));
         return;
       }
@@ -79,7 +93,7 @@
         mount(el, h('div', { class: 'qk-stage' },
           h('div', { class: 'card-black qk-over' },
             h('div', { class: 'display-lg' }, round.exhausted ? 'ALL CLEAR' : 'TIME OVER'),
-            teamPill(ctx, round.team, '이번 라운드'),
+            teamPill(ctx, round.team, '이번 라운드', round),
             h('div', { class: 'qk-result-nums' },
               h('div', null, h('div', { class: 'qk-big' }, round.stats.correct), h('div', { class: 'muted' }, '정답')),
               h('div', null, h('div', { class: 'qk-big faint' }, round.stats.pass), h('div', { class: 'muted' }, '패스')))),
@@ -89,7 +103,10 @@
 
       // playing / paused
       let center;
-      if (opts.mode === 'reveal' && round.currentAnswer) {
+      if (opts.mode === 'hint') {
+        // 초성 퀴즈: 초성만 공개
+        center = hintCard(round.currentHint, opts.subtitle);
+      } else if (opts.mode === 'reveal' && round.currentAnswer) {
         // 몸으로 말해요: 정답과 이미지를 모두에게 공개 (가운데 정렬)
         center = revealCard({ image: round.currentImage, word: round.currentAnswer, meta: opts.subtitle });
       } else if (opts.mode === 'image') {
@@ -105,7 +122,7 @@
 
       mount(el, h('div', { class: 'qk-stage' },
         h('div', { class: 'qk-topline' },
-          teamPill(ctx, round.team),
+          teamPill(ctx, round.team, '도전 팀', round),
           h('div', { class: 'qk-counts' },
             h('span', null, `#${round.number}`),
             h('span', { class: 'badge badge-primary' }, `정답 ${round.stats.correct}`),
@@ -129,8 +146,12 @@
     const act = (type, payload) => () => api.act(type, payload);
     const live = ['playing', 'paused'].includes(round.status);
 
+    const solo = round.mode === 'solo';
+    const teams = Kit.teamList(st.teams);
     const current = round.current && live
-      ? revealCard({ image: round.current.image, word: round.current.answer, meta: `#${round.number} ${opts.showImageToAll ? '정답' : '제시어 (진행자만 보임)'}` })
+      ? h('div', { class: 'stack-sm' },
+        opts.hintOf ? hintCard(opts.hintOf(round.current), '참가자 화면') : null,
+        revealCard({ image: round.current.image, word: round.current.answer, meta: `#${round.number} ${opts.showImageToAll ? '정답' : '정답 (진행자만 보임)'}` }))
       : h('div', { class: 'qk-reveal' },
         h('div', { class: 'muted' }, round.exhausted
           ? '준비된 문제를 모두 출제해서 라운드를 마쳤어요.'
@@ -148,9 +169,18 @@
       h('div', { class: 'qk-admin' },
         h('div', { class: 'qk-admin-top' },
           h('div', { class: 'stack-sm' },
-            h('div', { class: 'label' }, '도전 팀'),
+            h('div', { class: 'label' }, '진행 방식'),
             h('div', { class: 'seg' },
-              ['A', 'B'].map((t) => h('button', { class: `seg-btn ${round.team === t ? `on team-${t.toLowerCase()}` : ''}`, on: { click: act('setTeam', { team: t }) } }, st.teams[t].name)))),
+              [['team', '팀전'], ['solo', '개인전']].map(([m, label]) => h('button', {
+                class: `seg-btn ${(round.mode || 'team') === m ? 'on plain' : ''}`, disabled: live && (round.mode || 'team') !== m,
+                title: live ? '라운드를 끝낸 뒤 바꿀 수 있어요' : '', on: { click: act('setMode', { mode: m }) },
+              }, label))),
+            solo ? h('div', { class: 'faint link-sm' }, '정답을 누를 때 맞힌 사람을 고르세요 · 소속 팀에도 +1')
+              : teams.length
+                ? h('div', { class: 'seg seg-wrap' }, teams.map((t) => h('button', {
+                  class: `seg-btn tc ${round.team === t.id ? 'on' : ''}`, style: { '--tc': t.color }, on: { click: act('setTeam', { team: t.id }) },
+                }, t.name)))
+                : h('div', { class: 'faint link-sm' }, '팀이 없어요 — 개인전으로 진행하거나 팀을 추가하세요')),
           h('div', { class: 'stack-sm', style: { textAlign: 'center' } },
             h('div', { class: 'label' }, `타이머 · ${STATUS_LABEL[round.status]}`),
             Kit.timerEl(timer, 'qk-admin-timer')),
@@ -162,7 +192,9 @@
         current,
 
         // 메인 액션: 상태마다 지금 눌러야 할 버튼 하나(또는 정답/패스 둘)만 크게
-        round.status === 'playing'
+        round.status === 'playing' && solo
+          ? scorerPicker(st, api, (playerId) => api.act('correct', { playerId }), act('pass'))
+          : round.status === 'playing'
           ? h('div', { class: 'qk-admin-judge' },
             h('button', { class: 'btn btn-primary btn-xl', on: { click: act('correct') } }, '정답'),
             h('button', { class: 'btn btn-ghost btn-xl', on: { click: act('pass') } }, '패스'))
@@ -186,6 +218,22 @@
         h('details', { class: 'card qk-admin-history', open: round.status === 'ended' },
           h('summary', { class: 'heading-sm' }, `이번 라운드 기록 (${round.history.length})`),
           h('div', { style: { marginTop: '12px' } }, historyList(round.history, { showImage: !!opts.imageOf, imageOf: opts.imageOf })))));
+  }
+
+  /**
+   * 개인전: 맞힌 사람 고르기 (누르면 바로 정답 처리) + 패스
+   * 접속 중인 사람이 먼저, 팀 색 테두리, 현재 점수 표시
+   */
+  function scorerPicker(st, api, onPick, onPass) {
+    const players = [...st.players].sort((a, b) => (b.online - a.online) || a.joinedAt - b.joinedAt);
+    return h('div', { class: 'qk-pick' },
+      h('div', { class: 'row' }, h('div', { class: 'label grow', style: { margin: 0 } }, '맞힌 사람을 누르면 정답 처리 (+1)'),
+        h('button', { class: 'btn btn-ghost', style: { minWidth: '120px' }, on: { click: onPass } }, '패스')),
+      players.length
+        ? h('div', { class: 'qk-pick-grid' }, players.map((p) => h('button', {
+          class: `qk-pick-btn ${p.online ? '' : 'offline'}`, title: p.team ? Kit.teamName(st, p.team) : '팀 없음', on: { click: () => onPick(p.id) },
+        }, Kit.avatar(p), h('span', { class: 'ellipsis' }, p.nickname), h('span', { class: 'pts' }, `${p.score || 0}점`))))
+        : h('div', { class: 'empty' }, '참가자가 없어요'));
   }
 
   /** 제한 시간 설정 폼 */
@@ -376,5 +424,5 @@
     return zone;
   }
 
-  window.QuizKit = { renderPlayer, renderAdminControl, durationForm, questionManager, historyList, bulkImageZone };
+  window.QuizKit = { renderPlayer, renderAdminControl, durationForm, questionManager, historyList, bulkImageZone, scorerPicker, hintCard };
 })();

@@ -123,6 +123,33 @@ import { boot, GAMES, buildState, chatList, defaultJoinUrl, DEFAULT_PUBLIC } fro
   }
   const loadAllGameModules = () => Promise.all(GAMES.map((g) => loadGameAdmin(g.id)));
 
+  // ───────── 점수 헬퍼 ─────────
+  function teamScoreMap(team, delta) {
+    const t = S.state && S.state.teams[team];
+    if (!t) return {};
+    return { [`public/teams/${team}/score`]: (t.score || 0) + delta };
+  }
+  /** 개인 +delta, 소속 팀이 있으면 팀도 +delta (팀 점수 = 팀원 활약 합산 + 팀전 점수) */
+  function awardMap(playerId, delta) {
+    const p = S.state && S.state.players.find((x) => x.id === playerId);
+    if (!p) return {};
+    return { [`public/pscores/${playerId}`]: (p.score || 0) + delta, ...(p.team ? teamScoreMap(p.team, delta) : {}) };
+  }
+
+  /** 여러 명에게 한 번에 (같은 팀 팀원이 여럿이면 팀 점수는 합산) */
+  function awardManyMap(playerIds, delta) {
+    const map = {};
+    const teamDelta = {};
+    (playerIds || []).forEach((id) => {
+      const p = S.state.players.find((x) => x.id === id);
+      if (!p) return;
+      map[`public/pscores/${id}`] = (p.score || 0) + delta;
+      if (p.team) teamDelta[p.team] = (teamDelta[p.team] || 0) + delta;
+    });
+    Object.entries(teamDelta).forEach(([t, d]) => Object.assign(map, teamScoreMap(t, d)));
+    return map;
+  }
+
   /** 게임 모듈에 넘겨주는 컨텍스트: 현재 데이터 + DB 경로 + 점수 헬퍼 */
   function gameCtx(gid) {
     const adm = S.raw.admin || {};
@@ -131,6 +158,8 @@ import { boot, GAMES, buildState, chatList, defaultJoinUrl, DEFAULT_PUBLIC } fro
       id: gid,
       state: S.state,
       teams: S.state ? S.state.teams : DEFAULT_PUBLIC.teams,
+      teamIds: S.state ? S.state.teamList.map((t) => t.id) : [],
+      players: S.state ? S.state.players : [],
       pub: pick((S.raw.pub || {}).games) || null,
       content: pick(adm.content) || null,
       settings: pick(adm.settings) || {},
@@ -142,10 +171,12 @@ import { boot, GAMES, buildState, chatList, defaultJoinUrl, DEFAULT_PUBLIC } fro
         pub: `public/games/${gid}`, content: `admin/content/${gid}`, settings: `admin/settings/${gid}`,
         priv: `admin/rounds/${gid}`, seeded: `admin/seeded/${gid}`, played: `admin/played/${gid}`,
       },
-      score(team, delta) {
-        const cur = (S.state ? S.state.teams[team].score : 0) || 0;
-        return { [`public/teams/${team}/score`]: cur + delta };
-      },
+      score(team, delta) { return teamScoreMap(team, delta); },
+      /** 개인 점수 (+ 소속 팀 점수) */
+      award(playerId, delta) { return awardMap(playerId, delta); },
+      awardMany(playerIds, delta) { return awardManyMap(playerIds, delta); },
+      /** 엔진이 돌려준 score 객체를 DB 기록으로 */
+      scoreOf(sc) { return !sc ? {} : sc.playerId ? awardMap(sc.playerId, sc.delta) : teamScoreMap(sc.team, sc.delta); },
     };
   }
 
@@ -200,15 +231,38 @@ import { boot, GAMES, buildState, chatList, defaultJoinUrl, DEFAULT_PUBLIC } fro
     setTitle: ({ title }) => ({ 'public/title': String(title || '').trim().slice(0, 30) || 'GAME NIGHT' }),
     setJoinUrl: ({ url }) => ({ 'public/joinUrl': String(url || '').trim().slice(0, 300) || null }),
     setTeamName: ({ team, name }) => ({ [`public/teams/${team}/name`]: String(name || '').trim().slice(0, 12) || `${team}팀` }),
-    addScore: ({ team, delta }) => ({ [`public/teams/${team}/score`]: (S.state.teams[team].score || 0) + delta }),
-    setScore: ({ team, score }) => ({ [`public/teams/${team}/score`]: Math.trunc(Number(score) || 0) }),
-    resetScores: () => ({ 'public/teams/A/score': 0, 'public/teams/B/score': 0 }),
+    addScore: ({ team, delta }) => teamScoreMap(team, delta),
+    setScore: ({ team, score }) => (S.state.teams[team] ? { [`public/teams/${team}/score`]: Math.trunc(Number(score) || 0) } : {}),
+    /** 팀 점수 + 개인 점수 모두 0으로 */
+    resetScores() {
+      const map = { 'public/pscores': null };
+      S.state.teamList.forEach((t) => { map[`public/teams/${t.id}/score`] = 0; });
+      return map;
+    },
+    /** 팀 추가 (A~H 중 비어 있는 다음 글자) */
+    addTeam() {
+      const id = Kit.TEAM_IDS.find((x) => !S.state.teams[x]);
+      if (!id) throw new Error('팀은 최대 8개까지 만들 수 있어요.');
+      return { [`public/teams/${id}`]: { name: `${id}팀`, score: 0 } };
+    },
+    /** 팀 삭제: 팀원은 미배정으로 (개인 점수는 유지) */
+    removeTeam({ team }) {
+      const map = { [`public/teams/${team}`]: null };
+      S.state.players.filter((p) => p.team === team).forEach((p) => { map[`players/${p.id}/team`] = null; });
+      return map;
+    },
     assignTeam: ({ playerId, team }) => ({ [`players/${playerId}/team`]: team || null }),
+    /** 개인 점수 ± (소속 팀 점수도 함께) */
+    playerScore: ({ playerId, delta }) => awardMap(playerId, delta),
+    /** 여러 명에게 한 번에 (좀비 게임 생존자 등) */
+    awardMany: ({ playerIds, delta }) => awardManyMap(playerIds, delta),
     randomTeams() {
+      const ids = S.state.teamList.map((t) => t.id);
+      if (!ids.length) throw new Error('먼저 팀을 추가해 주세요.');
       const list = S.state.players.filter((p) => p.online);
       for (let i = list.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [list[i], list[j]] = [list[j], list[i]]; }
       const map = {};
-      list.forEach((p, i) => { map[`players/${p.id}/team`] = i % 2 === 0 ? 'A' : 'B'; });
+      list.forEach((p, i) => { map[`players/${p.id}/team`] = ids[i % ids.length]; });
       return map;
     },
     clearTeams() {
@@ -219,11 +273,11 @@ import { boot, GAMES, buildState, chatList, defaultJoinUrl, DEFAULT_PUBLIC } fro
     async kick({ playerId }) {
       const p = S.state.players.find((x) => x.id === playerId);
       if (p) B.push('chat', { uid: B.user().uid, kind: 'system', nickname: '', text: `${p.nickname} 님이 퇴장 처리되었어요.`, at: B.TIMESTAMP }).catch(() => {});
-      return { [`players/${playerId}`]: null };
+      return { [`players/${playerId}`]: null, [`public/pscores/${playerId}`]: null };
     },
     removeOffline() {
       const map = {};
-      S.state.players.filter((p) => !p.online).forEach((p) => { map[`players/${p.id}`] = null; });
+      S.state.players.filter((p) => !p.online).forEach((p) => { map[`players/${p.id}`] = null; map[`public/pscores/${p.id}`] = null; });
       return map;
     },
     clearChat: () => ({ chat: null }),
@@ -234,8 +288,9 @@ import { boot, GAMES, buildState, chatList, defaultJoinUrl, DEFAULT_PUBLIC } fro
     },
     async resetEvent() {
       // 보안 규칙상 players 전체를 한 번에 지울 수 없어 참가자별로 삭제한다 (한 번에 지우면 초기화 전체가 거부됨)
-      const map = { chat: null, 'public/phase': 'lobby', 'public/currentGameId': null,
-        'public/teams/A/score': 0, 'public/teams/B/score': 0, 'public/games': null, 'admin/rounds': null, 'admin/played': null };
+      const map = { chat: null, 'public/phase': 'lobby', 'public/currentGameId': null, 'public/pscores': null,
+        'public/games': null, 'admin/rounds': null, 'admin/played': null };
+      S.state.teamList.forEach((t) => { map[`public/teams/${t.id}/score`] = 0; });
       Object.keys(S.raw.players || {}).forEach((uid) => { map[`players/${uid}`] = null; });
       return map;
     },
@@ -298,23 +353,32 @@ import { boot, GAMES, buildState, chatList, defaultJoinUrl, DEFAULT_PUBLIC } fro
 
   function renderScoreAdmin(el) {
     const st = S.state;
-    const side = (key) => {
-      const t = st.teams[key];
-      const name = h('input', { class: 'team-name-input', value: t.name, maxlength: 12, 'aria-label': `${key}팀 이름`,
-        on: { change: () => action('setTeamName', { team: key, name: name.value }), keydown: (e) => { if (e.key === 'Enter') name.blur(); } } });
-      return h('div', { class: `admin-team ${key.toLowerCase()}` },
-        h('div', { class: 'grow stack-sm', style: { gap: '2px' } }, h('span', { class: 'link-sm', style: { opacity: 0.8 } }, `TEAM ${key}`), name),
-        h('button', { class: 'btn btn-icon btn-dark', title: '-1', on: { click: () => action('addScore', { team: key, delta: -1 }) } }, '−'),
+    const list = st.teamList;
+    el.classList.toggle('admin-scorebar-n', list.length !== 2);
+    const side = (t) => {
+      const name = h('input', { class: 'team-name-input', value: t.name, maxlength: 12, 'aria-label': `${t.id}팀 이름`,
+        on: { change: () => action('setTeamName', { team: t.id, name: name.value }), keydown: (e) => { if (e.key === 'Enter') name.blur(); } } });
+      return h('div', { class: 'admin-team tc', style: { '--tc': t.color } },
+        h('div', { class: 'grow stack-sm', style: { gap: '2px' } },
+          h('span', { class: 'link-sm row', style: { opacity: 0.8, gap: '4px' } }, `TEAM ${t.id}`,
+            h('button', { class: 'btn btn-icon btn-dark team-del', title: '팀 삭제', on: { click: async () => {
+              if (await Kit.confirm(`${t.name}을(를) 삭제할까요? 팀원은 미배정이 되고 개인 점수는 유지돼요.`, { ok: '삭제', danger: true })) action('removeTeam', { team: t.id });
+            } } }, '✕')),
+          name),
+        h('button', { class: 'btn btn-icon btn-dark', title: '-1', on: { click: () => action('addScore', { team: t.id, delta: -1 }) } }, '−'),
         h('button', { class: 'admin-pts', title: '클릭해서 점수 직접 입력', on: { click: () => {
           const v = prompt(`${t.name} 점수 입력`, t.score);
-          if (v !== null && v.trim() !== '' && !Number.isNaN(Number(v))) action('setScore', { team: key, score: Number(v) });
+          if (v !== null && v.trim() !== '' && !Number.isNaN(Number(v))) action('setScore', { team: t.id, score: Number(v) });
         } } }, t.score),
-        h('button', { class: 'btn btn-icon btn-dark', title: '+1', on: { click: () => action('addScore', { team: key, delta: 1 }) } }, '+'));
+        h('button', { class: 'btn btn-icon btn-dark', title: '+1', on: { click: () => action('addScore', { team: t.id, delta: 1 }) } }, '+'));
     };
-    mount(el, side('A'), side('B'),
-      h('button', { class: 'btn btn-sm btn-ghost', title: '두 팀 점수를 0으로', on: { click: async () => {
-        if (await Kit.confirm('두 팀 점수를 0점으로 초기화할까요?', { ok: '초기화', danger: true })) action('resetScores');
-      } } }, '점수 초기화'));
+    mount(el, list.map(side),
+      h('div', { class: 'admin-score-tools' },
+        list.length < Kit.TEAM_IDS.length ? h('button', { class: 'btn btn-sm btn-ghost', on: { click: () => action('addTeam') } }, '+ 팀 추가') : null,
+        h('button', { class: 'btn btn-sm btn-ghost', title: '팀 점수와 개인 점수를 모두 0으로', on: { click: async () => {
+          if (await Kit.confirm('팀 점수와 개인 점수를 모두 0점으로 초기화할까요?', { ok: '초기화', danger: true })) action('resetScores');
+        } } }, '점수 초기화'),
+        list.length ? null : h('span', { class: 'faint link-sm' }, '팀 없음 · 개인전으로 진행')));
   }
 
   function renderPage(force) {
@@ -394,7 +458,7 @@ import { boot, GAMES, buildState, chatList, defaultJoinUrl, DEFAULT_PUBLIC } fro
     const mod = window.AdminGames[gid];
     const meta = st.games.find((g) => g.id === gid) || {};
     const ctx = gameCtx(gid);
-    section(page, 'game', [gid, mod && mod.controlKey ? mod.controlKey(ctx) : [ctx.pub, ctx.priv, ctx.settings], st.teams], (el) => {
+    section(page, 'game', [gid, mod && mod.controlKey ? mod.controlKey(ctx) : [ctx.pub, ctx.priv, ctx.settings], st.teams, st.players], (el) => {
       const body = h('div');
       mount(el, h('div', { class: 'card card-xl stack game-panel' },
         h('div', { class: 'row row-wrap' },
@@ -409,31 +473,51 @@ import { boot, GAMES, buildState, chatList, defaultJoinUrl, DEFAULT_PUBLIC } fro
 
   // ───────── 참가자 · 팀 ─────────
   function pagePlayers(page, st) {
-    const col = (team, title) => {
-      const list = st.players.filter((p) => (p.team || null) === team);
-      return h('div', { class: `team-col ${team ? `team-col-${team.toLowerCase()}` : ''}` },
-        h('div', { class: 'team-col-head row' }, h('strong', { class: 'grow' }, title), h('span', { class: 'badge badge-ghost' }, `${list.length}명`)),
-        list.length ? list.map((p) => h('div', { class: `prow ${p.online ? '' : 'offline'}` },
-          h('div', { class: 'avatar-wrap' }, Kit.avatar(p), h('span', { class: `dot ${p.online ? 'on' : ''}` })),
-          h('span', { class: 'grow ellipsis prow-name' }, p.nickname),
-          h('div', { class: 'seg seg-sm' },
-            ['A', 'B'].map((t) => h('button', { class: `seg-btn ${p.team === t ? `on team-${t.toLowerCase()}` : ''}`, title: `${st.teams[t].name}로`, on: { click: () => action('assignTeam', { playerId: p.id, team: p.team === t ? null : t }) } }, t))),
-          h('button', { class: 'btn btn-icon btn-danger', title: '강퇴', on: { click: async () => {
-            if (await Kit.confirm(`${p.nickname} 님을 퇴장시킬까요?`, { ok: '퇴장', danger: true })) action('kick', { playerId: p.id });
-          } } }, '✕')))
-          : h('div', { class: 'empty', style: { padding: '20px' } }, '없음'));
+    const teams = st.teamList;
+    const teamSelect = (p) => {
+      const sel = h('select', { class: 'team-pick', 'aria-label': `${p.nickname} 팀`, on: { change: () => action('assignTeam', { playerId: p.id, team: sel.value || null }) } },
+        h('option', { value: '' }, '팀 없음'),
+        teams.map((t) => h('option', { value: t.id, selected: p.team === t.id }, t.name)));
+      return sel;
     };
+    const prow = (p) => h('div', { class: `prow ${p.online ? '' : 'offline'}` },
+      h('div', { class: 'avatar-wrap' }, Kit.avatar(p), h('span', { class: `dot ${p.online ? 'on' : ''}` })),
+      h('span', { class: 'grow ellipsis prow-name' }, p.nickname),
+      h('span', { class: 'pscore', title: '개인 점수 (소속 팀 점수도 함께 바뀌어요)' },
+        h('button', { class: 'btn btn-icon btn-ghost btn-xs', on: { click: () => action('playerScore', { playerId: p.id, delta: -1 }) } }, '−'),
+        h('b', null, p.score || 0),
+        h('button', { class: 'btn btn-icon btn-ghost btn-xs', on: { click: () => action('playerScore', { playerId: p.id, delta: 1 }) } }, '+')),
+      teams.length ? teamSelect(p) : null,
+      h('button', { class: 'btn btn-icon btn-danger', title: '강퇴', on: { click: async () => {
+        if (await Kit.confirm(`${p.nickname} 님을 퇴장시킬까요?`, { ok: '퇴장', danger: true })) action('kick', { playerId: p.id });
+      } } }, '✕'));
+    const col = (t) => {
+      const list = st.players.filter((p) => (p.team || null) === (t ? t.id : null));
+      return h('div', { class: `team-col ${t ? 'tc' : ''}`, style: t ? { '--tc': t.color } : null },
+        h('div', { class: 'team-col-head row' }, h('strong', { class: 'grow' }, t ? t.name : '미배정'),
+          t ? h('span', { class: 'badge badge-ghost' }, `${t.score}점`) : null,
+          h('span', { class: 'badge badge-ghost' }, `${list.length}명`)),
+        list.length ? list.map(prow) : h('div', { class: 'empty', style: { padding: '20px' } }, '없음'));
+    };
+    const ranked = Kit.rankPlayers(st.players).filter((p) => p.score);
     mount(page, h('div', { class: 'stack' },
       h('div', { class: 'row row-wrap' },
-        h('button', { class: 'btn btn-primary', on: { click: async () => {
-          if (await Kit.confirm('접속 중인 참가자를 A/B팀에 랜덤으로 나눌까요? 기존 배정은 덮어씁니다.', { ok: '랜덤 배정' })) action('randomTeams');
+        h('button', { class: 'btn btn-primary', disabled: !teams.length, on: { click: async () => {
+          if (await Kit.confirm(`접속 중인 참가자를 ${teams.length}개 팀에 랜덤으로 나눌까요? 기존 배정은 덮어씁니다.`, { ok: '랜덤 배정' })) action('randomTeams');
         } } }, '🎲 랜덤 팀 배정'),
+        h('button', { class: 'btn btn-ghost', on: { click: () => action('addTeam') } }, '+ 팀 추가'),
         h('button', { class: 'btn btn-ghost', on: { click: async () => { if (await Kit.confirm('모든 팀 배정을 해제할까요?')) action('clearTeams'); } } }, '배정 초기화'),
         h('button', { class: 'btn btn-ghost', on: { click: async () => {
           if (await Kit.confirm('접속이 끊긴 참가자를 명단에서 삭제할까요?', { ok: '정리', danger: true })) action('removeOffline');
         } } }, '오프라인 정리'),
-        h('span', { class: 'faint link-sm' }, 'A/B 버튼으로 팀 지정 · 다시 누르면 해제')),
-      h('div', { class: 'team-cols' }, col('A', st.teams.A.name), col('B', st.teams.B.name), col(null, '미배정'))));
+        h('span', { class: 'faint link-sm' }, '팀이 없어도 개인전으로 진행할 수 있어요 · ± 는 개인 점수')),
+      ranked.length ? h('div', { class: 'card stack' },
+        h('h3', { class: 'heading-sm' }, '🏆 개인 순위'),
+        h('div', { class: 'leader-list' }, ranked.slice(0, 10).map((p) => h('div', { class: 'leader-row' },
+          h('span', { class: 'leader-rank' }, p.rank), Kit.avatar(p, 'avatar-sm'),
+          h('span', { class: 'grow ellipsis' }, p.nickname), Kit.teamBadge(st, p.team),
+          h('span', { class: 'leader-score' }, `${p.score}점`))))) : null,
+      h('div', { class: `team-cols ${teams.length + 1 > 3 ? 'team-cols-n' : ''}` }, teams.map(col), col(null))));
   }
 
   // ───────── 채팅 ─────────

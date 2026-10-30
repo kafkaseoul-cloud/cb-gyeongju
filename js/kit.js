@@ -11,7 +11,12 @@
       for (const [k, v] of Object.entries(attrs)) {
         if (v === null || v === undefined || v === false) continue;
         if (k === 'class') el.className = v;
-        else if (k === 'style' && typeof v === 'object') Object.assign(el.style, v);
+        else if (k === 'style' && typeof v === 'object') {
+          for (const [sk, sv] of Object.entries(v)) {
+            if (sk.startsWith('--')) el.style.setProperty(sk, sv); // CSS 변수 (팀 색 등)
+            else el.style[sk] = sv;
+          }
+        }
         else if (k === 'on') for (const [ev, fn] of Object.entries(v)) el.addEventListener(ev, fn);
         else if (k === 'dataset') Object.assign(el.dataset, v);
         else if (k === 'html') el.innerHTML = v; // 신뢰된 정적 마크업에만 사용
@@ -76,11 +81,25 @@
     return AVATAR_COLORS[x % AVATAR_COLORS.length];
   }
   function avatar(p, size = '') {
-    const ring = p && p.team ? ` ring-${p.team.toLowerCase()}` : '';
-    if (p && p.avatar) return h('img', { class: `avatar ${size}${ring}`, src: p.avatar, alt: '', loading: 'lazy' });
+    const ring = p && p.team ? ' ring-tc' : '';
+    const tc = p && p.team ? { '--tc': teamColor(p.team) } : {};
+    if (p && p.avatar) return h('img', { class: `avatar ${size}${ring}`, src: p.avatar, alt: '', loading: 'lazy', style: tc });
     const name = (p && p.nickname) || '?';
-    return h('div', { class: `avatar ${size}${ring}`, style: { background: colorFor(name) } }, [...name][0].toUpperCase());
+    return h('div', { class: `avatar ${size}${ring}`, style: { ...tc, background: colorFor(name) } }, [...name][0].toUpperCase());
   }
+
+  // ───────── 팀 (최대 8팀: A~H, 팀마다 고정 색) ─────────
+  const TEAM_IDS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
+  const TEAM_COLORS = { A: '#5e5ce6', B: '#ff375f', C: '#30d158', D: '#ff9f0a', E: '#64d2ff', F: '#bf5af2', G: '#ffd60a', H: '#ac8e68' };
+  const teamColor = (id) => TEAM_COLORS[id] || '#8e8e93';
+  /** teams 객체 → 정렬된 배열 [{ id, name, score, color }] */
+  const teamList = (teams) => Object.entries(teams || {})
+    .filter(([id, t]) => t && TEAM_IDS.includes(id))
+    .map(([id, t]) => ({ id, name: t.name || `${id}팀`, score: Number(t.score) || 0, color: teamColor(id) }))
+    .sort((a, b) => TEAM_IDS.indexOf(a.id) - TEAM_IDS.indexOf(b.id));
+  /** 팀 색 배지 */
+  const teamBadge = (state, id) => (id && state.teams[id]
+    ? h('span', { class: 'badge tc', style: { '--tc': teamColor(id) } }, state.teams[id].name) : null);
 
   // ───────── 피드백 ─────────
   function toast(msg, kind = '') {
@@ -138,17 +157,29 @@
   // ───────── 스코어보드 ─────────
   const lastScores = {};
   function scoreboard(teams, myTeam) {
-    const side = (key) => {
-      const t = teams[key];
+    const list = teamList(teams);
+    if (!list.length) return null;
+    const side = (t, flip) => {
       const pts = h('div', { class: 'pts' }, t.score);
-      if (lastScores[key] !== undefined && lastScores[key] !== t.score) pts.classList.add('score-bump');
-      lastScores[key] = t.score;
-      return h('div', { class: `score-team ${key.toLowerCase()}` },
+      if (lastScores[t.id] !== undefined && lastScores[t.id] !== t.score) pts.classList.add('score-bump');
+      lastScores[t.id] = t.score;
+      return h('div', { class: `score-team tc ${flip ? 'flip' : ''}`, style: { '--tc': t.color } },
         h('div', { class: 'row', style: { gap: '0', minWidth: 0 } },
-          h('span', { class: 'name' }, t.name), myTeam === key ? h('span', { class: 'mine' }, 'MY') : null),
+          h('span', { class: 'name' }, t.name), myTeam === t.id ? h('span', { class: 'mine' }, 'MY') : null),
         pts);
     };
-    return h('div', { class: 'scorebar' }, side('A'), h('div', { class: 'score-vs' }, 'VS'), side('B'));
+    if (list.length === 2) return h('div', { class: 'scorebar' }, side(list[0]), h('div', { class: 'score-vs' }, 'VS'), side(list[1], true));
+    return h('div', { class: 'scorebar scorebar-n' }, list.map((t) => side(t)));
+  }
+
+  /** 개인 순위 (점수 높은 순, 동점은 같은 순위) */
+  function rankPlayers(players) {
+    const sorted = [...players].sort((a, b) => (b.score || 0) - (a.score || 0) || a.joinedAt - b.joinedAt);
+    let rank = 0, prev = null;
+    return sorted.map((p, i) => {
+      if (p.score !== prev) { rank = i + 1; prev = p.score; }
+      return { ...p, rank };
+    });
   }
 
   /** 섹션 단위 부분 렌더: 데이터가 바뀌었을 때만 다시 그려 입력 포커스를 지킨다 */
@@ -161,6 +192,8 @@
   }
 
   const teamName = (state, team) => (team && state.teams[team] ? state.teams[team].name : '미배정');
+  /** 'B' → 'b' 처럼 예전 팀 클래스가 필요한 곳을 위한 호환 */
+  const tcStyle = (id) => ({ '--tc': teamColor(id) });
 
   /** Realtime DB는 배열을 객체로 돌려줄 수 있어 항상 배열로 맞춘다 */
   const arr = (v) => (Array.isArray(v) ? v.filter((x) => x != null) : v && typeof v === 'object' ? Object.values(v) : []);
@@ -169,6 +202,7 @@
   window.Kit = {
     h, append, mount, $, store, setClock, now, remaining, fmt, timerEl,
     avatar, colorFor, toast, flash, confirm: confirmModal, resizeImage, scoreboard, keyed, teamName, arr, uid,
+    TEAM_IDS, teamColor, teamList, teamBadge, tcStyle, rankPlayers,
   };
   window.GameViews = window.GameViews || {};
   window.AdminGames = window.AdminGames || {};

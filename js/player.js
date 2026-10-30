@@ -106,14 +106,16 @@ import { boot, GAMES, buildState, chatList } from './common.js';
     // 상단: 내 정보 + 스코어
     const chip = $('#me-chip');
     chip.hidden = false;
-    keyed(chip, [m, st.teams[m.team] && st.teams[m.team].name, st.phase], (el) => {
+    const myRank = (Kit.rankPlayers(st.players).find((p) => p.id === m.id) || {}).rank;
+    keyed(chip, [m, st.teams[m.team] && st.teams[m.team].name, st.phase, myRank], (el) => {
       mount(el, Kit.avatar(m, 'avatar-sm'), h('span', { class: 'ellipsis' }, m.nickname),
-        m.team ? h('span', { class: `badge badge-${m.team.toLowerCase()}` }, st.teams[m.team].name) : null);
+        Kit.teamBadge(st, m.team),
+        h('span', { class: 'me-score', title: '내 점수 · 개인 순위' }, `${m.score || 0}점${m.score ? ` · ${myRank}위` : ''}`));
       el.onclick = st.phase === 'lobby' ? () => { S.editing = true; render(); } : null;
       el.title = st.phase === 'lobby' ? '프로필 수정' : '';
     });
     const sb = $('#scorebar-host');
-    sb.hidden = false;
+    sb.hidden = !st.teamList.length; // 팀이 없으면 개인전만 (상단 칩에 내 점수)
     keyed(sb, [st.teams, m.team], (el) => mount(el, Kit.scoreboard(st.teams, m.team)));
 
     if (st.phase === 'lobby') renderLobby(st);
@@ -200,7 +202,7 @@ import { boot, GAMES, buildState, chatList } from './common.js';
       ? st.players.map((p) => h('div', { class: `player-tile ${p.online ? '' : 'offline'} ${p.id === S.pid ? 'is-me' : ''}` },
         h('div', { class: 'avatar-wrap' }, Kit.avatar(p, 'avatar-lg'), h('span', { class: `dot ${p.online ? 'on' : ''}` })),
         h('div', { class: 'player-name ellipsis' }, p.nickname),
-        p.team ? h('span', { class: `badge badge-${p.team.toLowerCase()}` }, st.teams[p.team].name) : null))
+        Kit.teamBadge(st, p.team)))
       : h('div', { class: 'empty' }, '아직 아무도 없어요')));
   }
 
@@ -276,7 +278,8 @@ import { boot, GAMES, buildState, chatList } from './common.js';
   function renderSelect(st) {
     if (S.view !== 'select') $('#view')._key = null;
     S.view = 'select';
-    keyed($('#view'), ['select', st.games], (el) => { mount(el,
+    const ranked = Kit.rankPlayers(st.players).filter((p) => p.score).slice(0, 5);
+    keyed($('#view'), ['select', st.games, ranked.map((p) => [p.id, p.score, p.nickname])], (el) => { mount(el,
       h('section', { class: 'select' },
         h('div', { class: 'card-gradient select-hero' },
           h('div', { class: 'eyebrow', style: { color: 'rgba(255,255,255,.85)' } }, 'GAME SELECT'),
@@ -286,6 +289,12 @@ import { boot, GAMES, buildState, chatList } from './common.js';
           h('div', { class: `game-card c-${g.color || 'primary'}`, style: { animationDelay: `${i * 80}ms` } },
             h('div', { class: 'game-icon' }, g.icon || '🎮'),
             h('div', { class: 'grow' }, h('div', { class: 'heading-sm' }, g.name), h('div', { class: 'muted' }, g.description || ''))))),
+        ranked.length ? h('div', { class: 'card stack' },
+          h('h2', { class: 'heading-sm' }, '🏆 개인 순위'),
+          h('div', { class: 'leader-list' }, ranked.map((p) => h('div', { class: `leader-row ${p.id === S.pid ? 'is-me' : ''}` },
+            h('span', { class: 'leader-rank' }, p.rank), Kit.avatar(p, 'avatar-sm'),
+            h('span', { class: 'grow ellipsis' }, p.nickname), Kit.teamBadge(st, p.team),
+            h('span', { class: 'leader-score' }, `${p.score}점`))))) : null,
         h('div', { id: 'chat-slot', class: 'chat-slot' })));
       syncChatSlot($('#chat-slot'), true); });
   }
