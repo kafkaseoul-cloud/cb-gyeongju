@@ -1,0 +1,27 @@
+/* 초성 퀴즈 — 테마 화면은 몸으로 말해요와 같은 스타일 */
+.bt-themes { display: grid; gap: var(--s-xl); }
+.bt-themes-head { display: grid; gap: 6px; }
+.bt-themes-head p { margin: 0; }
+.bt-theme-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: var(--s-md); }
+.bt-theme {
+  display: grid; justify-items: center; gap: 6px; text-align: center;
+  padding: var(--s-xl) var(--s-md);
+  border-radius: var(--r-xl);
+  background: var(--surface);
+  border: 1px solid var(--hairline);
+  animation: bt-in 0.4s ease both;
+}
+.bt-theme-icon { font-size: 44px; line-height: 1.1; }
+@keyframes bt-in { from { opacity: 0; transform: translateY(14px) scale(0.95); } }
+
+/* 관리자 */
+.bt-admin-themes { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: var(--s-md); }
+.bt-admin-theme { border: 1px solid var(--hairline); cursor: pointer; text-align: left; color: var(--ink); display: grid; gap: 4px; padding: var(--s-xl); border-radius: var(--r-lg); background: var(--surface-2); transition: transform .12s ease, border-color .15s ease, box-shadow .15s ease; }
+.bt-admin-theme:hover { border-color: var(--primary); box-shadow: 0 0 0 4px var(--primary-soft, rgba(88,101,242,.16)); transform: translateY(-2px); }
+.bt-admin-theme .bt-theme-icon { font-size: 36px; }
+.bt-tabs { display: flex; gap: 6px; flex-wrap: wrap; }
+.bt-tab { border: 1px solid var(--hairline); cursor: pointer; padding: 7px 14px; border-radius: 9999px; background: transparent; color: var(--ink-dim); font-weight: 600; font-size: 14px; }
+.bt-tab.on { background: var(--primary); border-color: var(--primary); color: #fff; }
+
+/* 모든 문제가 출제된 테마 */
+.bt-admin-theme.is-done { opacity: 0.5; }
