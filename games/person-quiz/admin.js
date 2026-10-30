@@ -16,7 +16,8 @@
     .sort((a, b) => a.order - b.order);
   const duration = (ctx) => Number(ctx.settings.duration) || 120;
   const pub = (ctx) => ctx.pub || {};
-  const roundOf = (ctx) => E.normalize(pub(ctx).round, ctx.priv, duration(ctx));
+  // 인물 퀴즈는 기본 개인전 (진행 패널에서 팀전으로 바꿀 수 있음)
+  const roundOf = (ctx) => E.normalize(pub(ctx).round, ctx.priv, duration(ctx), { mode: 'solo' });
   const newKey = () => `${Date.now().toString(36)}${Kit.uid().slice(0, 4)}`;
 
   window.AdminGames[ID] = {
@@ -30,7 +31,7 @@
       const count = questionsOf(ctx).length;
       if ((pub(ctx).count || 0) !== count) map[`${ctx.P.pub}/count`] = count;
       if (!pub(ctx).round) {
-        const init = E.initial(duration(ctx));
+        const init = E.initial(duration(ctx), { mode: 'solo' });
         map[`${ctx.P.pub}/round`] = init.pub;
       }
       return map;
@@ -89,11 +90,12 @@
           const res = E.apply(type === 'setDurationRound' ? 'setDuration' : type, payload, roundOf(ctx), {
             pool: questionsOf(ctx), now: ctx.now, revealImage: true,
             played: (ctx.played || {}).all || {}, // 앞 팀이 진행한 인물은 다시 나오지 않도록
+            teams: ctx.teamIds, players: ctx.players,
           });
           return {
             [`${P.pub}/round`]: res.pub, [P.priv]: res.priv,
             [`${P.played}/all`]: Object.keys(res.played).length ? res.played : null,
-            ...(res.score ? ctx.score(res.score.team, res.score.delta) : {}),
+            ...ctx.scoreOf(res.score),
           };
         }
       }
