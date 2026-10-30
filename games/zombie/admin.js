@@ -27,6 +27,42 @@
     h('span', { class: 'faint link-sm' }, '대기 상태일 때 바로 반영돼요'));
   }
 
+  // 생존자(개인 점수) 선택 — 다시 그려도 선택이 유지되도록 모듈에 보관
+  const picked = new Set();
+
+  /** 개인전 점수 패널: 사람을 골라서 한 번에 +1 / −1 */
+  function scorePanel(ctx, api) {
+    const players = [...ctx.players].sort((a, b) => (b.online - a.online) || a.joinedAt - b.joinedAt);
+    [...picked].forEach((id) => { if (!players.find((p) => p.id === id)) picked.delete(id); });
+    const box = h('div', { class: 'card stack' });
+    const paint = () => {
+      const n = picked.size;
+      mount(box,
+        h('div', { class: 'row row-wrap' },
+          h('h3', { class: 'heading-sm grow' }, '🏅 개인 점수 (생존자 등)'),
+          h('button', { class: 'btn btn-sm btn-ghost', on: { click: () => {
+            if (picked.size === players.length) picked.clear(); else players.forEach((p) => picked.add(p.id));
+            paint();
+          } } }, picked.size === players.length && players.length ? '전체 해제' : '전체 선택')),
+        h('p', { class: 'faint link-sm', style: { margin: 0 } }, '점수를 줄 사람을 고른 뒤 +1 을 누르세요. 소속 팀이 있으면 팀 점수에도 더해져요.'),
+        players.length ? h('div', { class: 'qk-pick-grid' }, players.map((p) => h('button', {
+          class: `qk-pick-btn ${p.online ? '' : 'offline'} ${picked.has(p.id) ? 'sel' : ''}`, 'aria-pressed': picked.has(p.id) ? 'true' : 'false',
+          on: { click: () => { if (picked.has(p.id)) picked.delete(p.id); else picked.add(p.id); paint(); } },
+        }, Kit.avatar(p), h('span', { class: 'ellipsis' }, p.nickname), h('span', { class: 'pts' }, `${p.score || 0}점`))))
+          : h('div', { class: 'empty' }, '참가자가 없어요'),
+        h('div', { class: 'row row-wrap' },
+          h('button', { class: 'btn btn-primary', disabled: !n, on: { click: async () => {
+            if (await api.act('award', { playerIds: [...picked], delta: 1 })) { Kit.toast(`${n}명에게 +1 했어요.`); picked.clear(); }
+          } } }, n ? `선택한 ${n}명 +1` : '+1'),
+          h('button', { class: 'btn btn-ghost', disabled: !n, on: { click: async () => {
+            if (await api.act('award', { playerIds: [...picked], delta: -1 })) { Kit.toast(`${n}명 −1 했어요.`); picked.clear(); }
+          } } }, '−1'),
+          n ? h('button', { class: 'btn btn-sm btn-ghost', on: { click: () => { picked.clear(); paint(); } } }, '선택 해제') : null));
+    };
+    paint();
+    return box;
+  }
+
   window.AdminGames[ID] = {
     seed(ctx) { return ctx.seeded ? {} : { [ctx.P.seeded]: true, [`${ctx.P.settings}/duration`]: 300 }; },
 
@@ -43,7 +79,7 @@
       return stateOf(ctx).status === 'playing' ? this.action('pause', {}, ctx) : {};
     },
 
-    controlKey: (ctx) => [ctx.pub, duration(ctx)],
+    controlKey: (ctx) => [ctx.pub, duration(ctx), ctx.players],
 
     action(type, payload, ctx) {
       let { status, timer } = stateOf(ctx);
@@ -67,6 +103,12 @@
           const s = Math.max(10, Math.min(3600, Math.round(Number(payload.seconds) || 0)));
           timer = T.setDuration(timer, s);
           return { [`${ctx.P.settings}/duration`]: s, [ctx.P.pub]: { status, timer } };
+        }
+        case 'award': {
+          // 개인전: 고른 사람들에게 점수 (소속 팀에도 합산)
+          const ids = (payload.playerIds || []).filter(Boolean);
+          if (!ids.length) throw new Error('점수를 줄 사람을 골라 주세요.');
+          return ctx.awardMany(ids, Number(payload.delta) || 1);
         }
         default: throw new Error(`알 수 없는 명령: ${type}`);
       }
@@ -93,8 +135,9 @@
           h('div', { class: 'spacer' }),
           live ? h('button', { class: 'btn btn-sm btn-danger', on: { click: act('end') } }, '종료') : null,
           g.status !== 'ready' ? h('button', { class: 'btn btn-sm btn-ghost', on: { click: act('reset') } }, '리셋') : null),
+        scorePanel(ctx, api),
         h('div', { class: 'card stack' }, h('h3', { class: 'heading-sm' }, '⏱ 게임 시간'), durationForm(ctx, api)),
-        h('p', { class: 'faint link-sm', style: { margin: 0 } }, '점수는 상단 스코어보드의 +/− 버튼으로 직접 반영하세요.')));
+        h('p', { class: 'faint link-sm', style: { margin: 0 } }, '팀 점수는 상단 스코어보드의 +/− 로도 직접 바꿀 수 있어요.')));
     },
 
     content(root, ctx, api) {
